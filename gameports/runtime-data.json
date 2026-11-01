@@ -10,10 +10,11 @@
       "urls": [
         "https://www.cavestory.one/downloads/data.zip"
       ],
-      "sha256": null,
+      "sha256": "444c4265b5acc11495b8d5b00ef7e7843b5ee8e0f6a5d9c4201ed36adbd018f0",
+      "size": 1209287,
       "availability": "freeware-public-download",
       "packaging": "fetch-on-demand",
-      "notes": "Pre-extracted NXEngine-compatible data mirror for the original freeware Cave Story. The fetcher records the observed SHA-256; do not commit or republish this archive from AmigaChrome."
+      "notes": "Pre-extracted NXEngine-compatible data mirror for the original freeware Cave Story. Do not commit or republish this archive from AmiCradle. Pinned to the file that URL served on 1 November 2026: 1,209,287 bytes, 559 entries under data/, CRCs good; observed, not a publisher signature. A different file there fails the fetch until it is checked and pinned again."
     }
   }
 }
