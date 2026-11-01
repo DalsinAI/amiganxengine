@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "ports": {
+    "nxengine-evo": {
+      "order": 5,
+      "title": "NXEngine-evo (Cave Story)",
+      "source": {
+        "kind": "git",
+        "url": "https://github.com/nxengine/nxengine-evo.git",
+        "commit": "1f093d1423cc395eb199230cd609b806ef1daa36",
+        "submodules": false
+      },
+      "contentPolicy": "Engine follows upstream licensing. Cave Story data is external.",
+      "runtimeData": {
+        "mode": "auto-fetch",
+        "dataset": "cave-story-english-1006",
+        "manifest": "gameports/runtime-data.json"
+      }
+    }
+  }
+}

@@ -2,7 +2,7 @@
 set -eu
 
 HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-ROOT=$(CDPATH= cd -- "$HERE/../.." && pwd)
+ROOT=$HERE
 SRC=${1:-"$ROOT/build/game-ports/sources/nxengine-evo"}
 OUT=${2:-"$ROOT/build/os3/nxengine-evo"}
 : "${STOVE:?set STOVE to an isolated 16.2.0-open3 stove root}"

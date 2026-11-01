@@ -7,7 +7,7 @@ Pinned upstream: `nxengine/nxengine-evo` commit
 
 ## Approved compiler build
 
-Use `STOVE=/path/to/verified-open3 sh ports/nxengine-evo/build-amigaos3.sh`.
+Use `STOVE=/path/to/verified-open3 sh build-amigaos3.sh`.
 The recipe requires GCC 16.2.0-open3 and verified zlib/PNG/JPEG dependencies.
 It enables portable adjacent data and the 68040/FPU null-pointer compiler
 workaround. It no longer relies on a host-installed data directory.
@@ -22,7 +22,7 @@ qualification remains separate from compile success.
 Cave Story assets are not bundled. Prepare an owner-authorised local archive:
 
 ```sh
-python3 ports/nxengine-evo/import_data.py \
+python3 import_data.py \
   --archive /path/to/cavestory-nx-data.zip \
   --engine-data build/game-ports/sources/nxengine-evo/data \
   --out build/nx-test-data

@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "policy": "Bundle data when redistribution is clearly licensed. Otherwise fetch public/freeware/shareware/demo data from the recorded upstream/public source and stage it locally without committing it to source control.",
+  "datasets": {
+    "cave-story-english-1006": {
+      "games": [
+        "nxengine-evo"
+      ],
+      "filename": "cavestory-nx-data.zip",
+      "urls": [
+        "https://www.cavestory.one/downloads/data.zip"
+      ],
+      "sha256": null,
+      "availability": "freeware-public-download",
+      "packaging": "fetch-on-demand",
+      "notes": "Pre-extracted NXEngine-compatible data mirror for the original freeware Cave Story. The fetcher records the observed SHA-256; do not commit or republish this archive from AmigaChrome."
+    }
+  }
+}
