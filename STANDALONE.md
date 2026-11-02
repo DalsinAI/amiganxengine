@@ -1,7 +1,7 @@
 # Standalone port repository
 
 `amiganxengine` is the canonical home of the AmigaOS 3.x / AmigaChrome work for
-`NXEngine-evo`. Its history was split from `DalsinAI/amigachrome-gameports` without
+`NXEngine-evo`. Its history was split from `DalsinAI/amicradle-gameports` without
 flattening the commits.
 
 Repository-local build support under `scripts/`, `toolchain/` and `gameports/`
