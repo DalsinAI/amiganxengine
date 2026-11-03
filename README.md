@@ -215,10 +215,10 @@ SYS:T/input.txt`, `nxengine-evo -fps`:
   port) as `unknown`.
 - Keyboard: Z on New Game; `HoldKeys 28 CYCLE 31,32 PERIOD 15` (Z and X in
   turn) through the opening's dialogue to the Start Point; then the cursor
-  keys held with `HoldKeys`: Quote walked right up onto the ledge by the
-  door, jumped left (Left and Z held) and fell into the water at the foot
-  of the cave (the air counter showed), and jumped out again; Escape,
-  Quit. The input log has all 202 key presses and releases with their
+  keys held with `HoldKeys`: Quote walked right onto the ledge on the
+  right, jumped left (Left and Z held) and fell into the water at the foot
+  of the cave (the air counter showed); Right and Z held after that (not
+  looked at on screen); Escape, Quit. The input log has all 202 key presses and releases with their
   times (Z `122`, X `120`, Right `1073741903`, Left `1073741904`), and no
   joystick event.
 - Frames shown: 49.5 a second on average over 108 readings, 41.9 at the
