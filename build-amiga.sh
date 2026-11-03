@@ -1,0 +1,194 @@
+#!/bin/sh
+# NXEngine-evo (Cave Story) for AmigaOS 3.x / AmiCradle (68040 + FPU, libnix,
+# SDL 2 through GFOpenGPU), built with the os32-gcc16 stove: OpenAmigaGCC
+# 16.2.0-open3 or open4, known by their archives' SHA-256, or GFOpenAmigaGCC
+# 16.2.0-open5 (Cradle's os32-gcc16 stove since the evening of 2 November
+# 2026), which has no published archive: STOVE.json's release and the
+# compiler's own --version name it, and the receipt records the SHA-256 of the
+# compiler's own programs instead. This is the build Cradle's stove_build runs
+# (STOVE= and OUT= set, target .).
+#   STOVE      the stove (default ~/AmiCradle/stoves/os32-gcc16, then
+#              ~/AmigaChrome/stoves/os32-gcc16)
+#   OUT        the output directory (default build-amiga)
+#   NX_SOURCE  a local upstream checkout holding the pinned commit; without
+#              it the pinned commit (gameports/catalog.json) is fetched
+#   JOBS       parallel compiles (default 2)
+# patches/ is applied to a copy of upstream (git archive of the pinned
+# commit), with no fuzz, then patch_amigaos3_deps.py; the sources are
+# upstream's own CMake lists (the same globs), compiled with the stove's
+# compilers and linked with the stove's SDL 2, SDL2_mixer, SDL2_image, libpng
+# and zlib. Outputs: NXEngine/nxengine-evo, NXEngine/LICENSE, receipt.json,
+# build.log. The Cave Story data is not built here: runtime-data/build-amiga.sh
+# stages it for a lab, and it is never committed.
+# MIT, Copyright (c) 2026 AmiCradle Team.
+set -eu
+
+HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+if [ -z "${STOVE:-}" ]; then
+    STOVE="$HOME/AmiCradle/stoves/os32-gcc16"
+    [ -d "$STOVE" ] || STOVE="$HOME/AmigaChrome/stoves/os32-gcc16"
+fi
+OUT=${OUT:-"$HERE/build-amiga"}
+JOBS=${JOBS:-2}
+OPEN3=9fcc136ab59e3bb5b91d2764d0bf290b709d72d7380be4ce0cdf005edf8eff21
+OPEN4=495319a2ffd803278f8827cad70074029c7aa9ecbe05d037e8646ba43ab94ab2
+P="$STOVE/prefix"
+SDK="$P/m68k-amigaos"
+CC="$P/bin/m68k-amigaos-gcc"
+CXX="$P/bin/m68k-amigaos-g++"
+
+# the compiler must be one of them: open3 or open4 by its archive's
+# checksum, from the stove's STOVE.json (Cradle's stoves) or provenance.json
+# (a staged stove); open5 by STOVE.json's release and the compiler's own
+# --version, as Cradle's stove has it (no archive published)
+COMPILER=$(python3 - "$STOVE" "$OPEN3" "$OPEN4" "$CC" <<'EOF'
+import json, subprocess, sys
+from pathlib import Path
+stove = Path(sys.argv[1])
+known = {sys.argv[2]: "16.2.0-open3", sys.argv[3]: "16.2.0-open4"}
+got = release = None
+if (stove / "STOVE.json").is_file():
+    info = json.loads((stove / "STOVE.json").read_text())
+    got = (info.get("compilerArchive") or {}).get("sha256")
+    release = info.get("release")
+if got is None and (stove / "provenance.json").is_file():
+    got = json.loads((stove / "provenance.json").read_text()).get("archive_sha256")
+if got in known:
+    print(known[got], got)
+elif got is None and release == "GFOpenAmigaGCC 16.2.0-open5":
+    version = subprocess.run([sys.argv[4], "--version"], capture_output=True, text=True).stdout
+    if "(GFOpenAmigaGCC 16.2.0-open5)" not in version:
+        sys.exit(f"STOVE.json says {release}, the compiler says {version.splitlines()[:1]}")
+    print("16.2.0-open5", "unpublished")
+else:
+    sys.exit(f"{stove} is not an OpenAmigaGCC 16.2.0-open3 or open4 or a GFOpenAmigaGCC 16.2.0-open5 stove (compiler archive {got}, release {release})")
+EOF
+)
+RELEASE=${COMPILER% *}
+ARCHIVE=${COMPILER#* }
+"$CC" --version | head -n 1
+"$CC" --version | head -n 1 | grep -q "$RELEASE" || { echo "$CC is not $RELEASE"; exit 2; }
+
+# SDL 2 and its satellites (GFOpenGPU's link stubs), libpng and zlib, all
+# from the stove's SDK
+missing=0
+for f in include/SDL2/SDL.h include/SDL2/SDL_mixer.h include/SDL2/SDL_image.h \
+         include/png.h include/zlib.h lib/libSDL2.a lib/libSDL2_mixer.a \
+         lib/libSDL2_image.a lib/libpng.a lib/libz.a; do
+    [ -f "$SDK/$f" ] || { echo "the stove has no $f"; missing=1; }
+done
+if [ "$missing" -ne 0 ]; then
+    ls "$SDK/lib" "$SDK/include" "$SDK/include/SDL2" 2>&1 | head -n 200
+    exit 2
+fi
+
+eval "$(python3 - "$HERE/gameports/catalog.json" <<'EOF'
+import json, shlex, sys
+src = json.load(open(sys.argv[1]))["ports"]["nxengine-evo"]["source"]
+print(f"PIN={shlex.quote(src['commit'])}")
+print(f"URL={shlex.quote(src['url'])}")
+EOF
+)"
+REPO_REV=$(git -C "$HERE" rev-parse HEAD 2>/dev/null || echo unknown)
+
+WORK=$(mktemp -d "${TMPDIR:-/tmp}/nxengine-build.XXXXXX")
+trap 'rm -rf "$WORK"' EXIT INT TERM
+
+if [ -n "${NX_SOURCE:-}" ]; then
+    UP=$NX_SOURCE
+else
+    UP="$WORK/upstream"
+    git init -q "$UP"
+    git -C "$UP" fetch -q --depth 1 "$URL" "$PIN"
+fi
+git -C "$UP" cat-file -e "$PIN^{commit}"
+EPOCH=$(git -C "$UP" show -s --format=%ct "$PIN")
+
+SRC="$WORK/src"
+mkdir -p "$SRC" "$OUT"
+git -C "$UP" archive "$PIN" | tar -xf - -C "$SRC"
+for patch in "$HERE"/patches/*.patch; do
+    [ -f "$patch" ] || continue
+    echo "patch: $(basename "$patch")"
+    patch --batch --forward --fuzz=0 -p1 -d "$SRC" < "$patch"
+done
+python3 "$HERE/patch_amigaos3_deps.py" "$SRC"
+
+# upstream's source list (CMakeLists.txt: the same globs, ai/ recursive)
+SOURCES=$(cd "$SRC" && {
+    for d in src src/TextBox src/autogen src/common src/Utils src/endgame \
+             src/graphics src/intro src/pause src/siflib src/sound src/i18n; do
+        find "$d" -maxdepth 1 -type f -name '[a-zA-Z]*.cpp'
+    done
+    find src/ai -type f -name '[a-zA-Z]*.cpp'
+} | LC_ALL=C sort)
+[ "$(printf '%s\n' $SOURCES | wc -l)" -gt 150 ] || { echo "could not read the source list"; exit 2; }
+
+# upstream's own flags for the pc platform (-std=c++11, -Wall), Release
+# (-O2 -DNDEBUG); -fno-delete-null-pointer-checks: address 0 is memory on an
+# Amiga
+FLAGS="-noixemul -m68040 -m68881 -pthread -fno-delete-null-pointer-checks
+ -std=c++11 -O2 -DNDEBUG -Wall -Wno-attributes -ffile-prefix-map=$SRC=.
+ -I$SRC -I$SRC/deps -I$SDK/include/SDL2 -I$SDK/include"
+LIBS="-lSDL2_mixer -lSDL2_image -lSDL2 -lpng -lz -lGL -lm -pthread"
+
+mkdir -p "$SRC/obj"
+if ! (
+    cd "$SRC"
+    export SOURCE_DATE_EPOCH="$EPOCH"
+    printf '%s\n' $SOURCES | xargs -P "$JOBS" -I{} sh -c '
+        o=obj/$(echo "{}" | tr / _).o
+        echo "c++ {}"
+        "$0" $1 -c "{}" -o "$o"' "$CXX" "$FLAGS" &&
+    OBJS=$(for s in $SOURCES; do printf '%s ' "obj/$(echo "$s" | tr / _).o"; done) &&
+    echo "link nxengine-evo" &&
+    # shellcheck disable=SC2086
+    "$CXX" -noixemul -m68040 -m68881 -pthread -o nxengine-evo $OBJS -L"$SDK/lib" $LIBS
+) > "$OUT/build.log" 2>&1; then
+    tail -n 120 "$OUT/build.log"
+    exit 1
+fi
+echo "compiled $(printf '%s\n' $SOURCES | wc -l) sources; warnings, each once (from $(grep -c 'warning:' "$OUT/build.log" || true) in all):"
+grep 'warning:' "$OUT/build.log" | sed -e 's/^\.\///' | sort | uniq -c | sort -rn | head -n 40 || true
+
+EXE="$SRC/nxengine-evo"
+[ -f "$EXE" ] || { echo "no executable: see build.log"; tail -n 60 "$OUT/build.log"; exit 2; }
+[ "$(od -An -tx1 -N4 "$EXE" | tr -d ' \n')" = "000003f3" ] || { echo "not an Amiga HUNK executable"; exit 2; }
+
+# the drawer: the program and the licence (runtime-data/build-amiga.sh
+# stages the data that goes beside it)
+D="$OUT/NXEngine"
+mkdir -p "$D"
+cp "$EXE" "$D/nxengine-evo"
+cp "$SRC/LICENSE" "$D/LICENSE"
+
+python3 - "$HERE" "$OUT" "$PIN" "$REPO_REV" "$EPOCH" "$STOVE" "$RELEASE" "$ARCHIVE" <<'EOF'
+import hashlib, json, sys
+from pathlib import Path
+here, out, pin, rev, epoch, stove, release, archive = Path(sys.argv[1]), Path(sys.argv[2]), *sys.argv[3:]
+sha = lambda p: hashlib.sha256(Path(p).read_bytes()).hexdigest()
+sdk = Path(stove) / "prefix/m68k-amigaos"
+inputs = ["lib/libSDL2.a", "lib/libSDL2_mixer.a", "lib/libSDL2_image.a", "lib/libGL.a",
+          "lib/libpng.a", "lib/libz.a", "include/SDL2/SDL.h", "include/SDL2/SDL_mixer.h",
+          "include/SDL2/SDL_image.h", "include/png.h", "include/zlib.h"]
+drawer = out / "NXEngine"
+receipt = {
+    "upstream_commit": pin, "repository_commit": rev, "source_date_epoch": epoch,
+    "recipe": {n: sha(here / n) for n in ("build-amiga.sh", "patch_amigaos3_deps.py")},
+    "patches": {p.name: sha(p) for p in sorted((here / "patches").glob("*.patch"))},
+    "compiler_release": release, "compiler_archive_sha256": archive,
+    "sdk_inputs": {n: sha(sdk / n) for n in inputs if (sdk / n).is_file()},
+    "network": False,
+    "executable_sha256": sha(drawer / "nxengine-evo"),
+    "executable_bytes": (drawer / "nxengine-evo").stat().st_size,
+    "scope": "Source build only; no network code; no game data; no runtime or release pass implied",
+}
+if archive == "unpublished":
+    # no archive to name: the compiler's own programs, by SHA-256
+    prefix = Path(stove) / "prefix"
+    files = ["bin/m68k-amigaos-gcc", "bin/m68k-amigaos-g++", "bin/m68k-amigaos-as", "bin/m68k-amigaos-ld"]
+    files += sorted(str(p.relative_to(prefix)) for p in prefix.glob("libexec/gcc/m68k-amigaos/*/cc1*"))
+    receipt["compiler_files_sha256"] = {f: sha(prefix / f) for f in files if (prefix / f).is_file()}
+(out / "receipt.json").write_text(json.dumps(receipt, indent=2) + "\n")
+print(json.dumps(receipt, indent=2))
+EOF
