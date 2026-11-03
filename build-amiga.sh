@@ -12,9 +12,7 @@
 #   OUT        the output directory (default build-amiga)
 #   NX_SOURCE  a local upstream checkout holding the pinned commit; without
 #              it the pinned commit (gameports/catalog.json) is fetched
-#   JOBS       parallel compiles (default: the host's processors, at most
-#              8; every source carries the bundled spdlog and fmt headers,
-#              so two at a time would not finish inside stove_build's 900 s)
+#   JOBS       parallel compiles (default: the host's processors, at most 8)
 # patches/ is applied to a copy of upstream (git archive of the pinned
 # commit), with no fuzz, then patch_amigaos3_deps.py; the sources are
 # upstream's own CMake lists (the same globs), compiled with the stove's
@@ -138,13 +136,20 @@ SOURCES=$(cd "$SRC" && {
 } | LC_ALL=C sort)
 [ "$(printf '%s\n' $SOURCES | wc -l)" -gt 100 ] || { echo "could not read the source list"; exit 2; }
 
+# spdlog as a compiled library (amiga/spdlog_lib.cpp, as spdlog's own
+# SPDLOG_COMPILED_LIB build): header-only, every source compiled the logger
+# and fmt again, ten times the work, and the build did not finish inside
+# stove_build's 900 s
+cp "$HERE/amiga/spdlog_lib.cpp" "$SRC/src/amiga_spdlog_lib.cpp"
+SOURCES="$SOURCES src/amiga_spdlog_lib.cpp"
+
 # upstream's own flags for the pc platform (-std=c++11, -Wall), Release
 # (-O2 -DNDEBUG); -fno-delete-null-pointer-checks: address 0 is memory on an
 # Amiga
 FLAGS="-noixemul -m68040 -m68881 -pthread -fno-delete-null-pointer-checks
- -std=c++11 -O2 -DNDEBUG -Wall -Wno-attributes -ffile-prefix-map=$SRC=.
- -I$SRC -I$SRC/deps -I$SDK/include/SDL2 -I$DEPS/include"
-LIBS="-lSDL2_mixer -lSDL2_image -lSDL2 -lpng -lz -lGL -lm -pthread"
+ -std=c++11 -O2 -DNDEBUG -DSPDLOG_COMPILED_LIB -Wall -Wno-attributes
+ -ffile-prefix-map=$SRC=. -I$SRC -I$SRC/deps -I$SDK/include/SDL2 -I$DEPS/include"
+LIBS="-lSDL2_mixer -lSDL2_image -lSDL2 -lpng -lz -lGL -lm -latomic -pthread"
 
 mkdir -p "$SRC/obj"
 if ! (
@@ -162,7 +167,7 @@ if ! (
     tail -n 120 "$OUT/build.log"
     exit 1
 fi
-echo "compiled $(printf '%s\n' $SOURCES | wc -l) sources; warnings, each once (from $(grep -c 'warning:' "$OUT/build.log" || true) in all):"
+echo "compiled $(printf '%s\n' $SOURCES | wc -l) sources (upstream's and amiga/spdlog_lib.cpp); warnings, each once (from $(grep -c 'warning:' "$OUT/build.log" || true) in all):"
 grep 'warning:' "$OUT/build.log" | sed -e 's/^\.\///' | sort | uniq -c | sort -rn | head -n 40 || true
 
 EXE="$SRC/nxengine-evo"
@@ -188,7 +193,7 @@ codec_inputs = ["lib/libpng.a", "lib/libz.a", "include/png.h", "include/zlib.h"]
 drawer = out / "NXEngine"
 receipt = {
     "upstream_commit": pin, "repository_commit": rev, "source_date_epoch": epoch,
-    "recipe": {n: sha(here / n) for n in ("build-amiga.sh", "patch_amigaos3_deps.py")},
+    "recipe": {n: sha(here / n) for n in ("build-amiga.sh", "patch_amigaos3_deps.py", "amiga/spdlog_lib.cpp")},
     "patches": {p.name: sha(p) for p in sorted((here / "patches").glob("*.patch"))},
     "compiler_release": release, "compiler_archive_sha256": archive,
     "sdk_inputs": {n: sha(sdk / n) for n in inputs if (sdk / n).is_file()},
