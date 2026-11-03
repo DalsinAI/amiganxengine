@@ -263,7 +263,7 @@ then Quit:
 - Mixing (music and effects): **2.49 ms on average** for each 92.9 ms
   buffer (2.7 per cent of the time it plays for), 9.92 ms at the very most.
 - Frames shown: 49.7 a second on average over 168 readings, as without
-  sound measured (44.0 at the lowest, at a stage load).
+  sound measured (44.0 at the lowest, 51.8 at the highest).
 - The 26 Organya songs and the effects loaded with no error beyond
   upstream's 37 absent `pxt` numbers; `Sound system shutdown` at exit.
 
