@@ -1,0 +1,76 @@
+diff --git a/src/Utils/Logger.cpp b/src/Utils/Logger.cpp
+index f0ecf98..592e79d 100644
+--- a/src/Utils/Logger.cpp
++++ b/src/Utils/Logger.cpp
+@@ -16,9 +16,21 @@ namespace Logger
+   static const char *LOG_PATTERN = "%^[%H:%M:%S.%e] [%l] [%@ %!]: %v%$";
+   std::vector<spdlog::sink_ptr> sinks;
+ 
++#if defined(__amigaos__)
++  void init(std::string filename)
++  {
++    init(filename, true);
++  }
++
++  void init(std::string filename, bool console)
++  {
++    if (console)
++      sinks.push_back(std::make_shared<spdlog::sinks::stdout_color_sink_mt>());
++#else
+   void init(std::string filename)
+   {
+     sinks.push_back(std::make_shared<spdlog::sinks::stdout_color_sink_mt>());
++#endif
+     sinks.push_back(std::make_shared<spdlog::sinks::basic_file_sink_mt>(widen(filename), true));
+ 
+     spdlog::set_default_logger(std::make_shared<spdlog::logger>("nxe logger", begin(sinks), end(sinks)));
+diff --git a/src/Utils/Logger.h b/src/Utils/Logger.h
+index 8817961..b08cb34 100644
+--- a/src/Utils/Logger.h
++++ b/src/Utils/Logger.h
+@@ -13,6 +13,10 @@ namespace Logger
+ {
+ 
+   void init(std::string filename);
++#if defined(__amigaos__)
++  // started from Workbench: the log file only, so no console window opens
++  void init(std::string filename, bool console);
++#endif
+ 
+ #define LOG_TRACE SPDLOG_TRACE
+ #define LOG_DEBUG SPDLOG_DEBUG
+diff --git a/src/main.cpp b/src/main.cpp
+index dae6494..910f544 100644
+--- a/src/main.cpp
++++ b/src/main.cpp
+@@ -111,6 +111,13 @@ static void amiga_fps_tick()
+ }
+ #endif
+ 
++#if defined(__amigaos__)
++static void amiga_sdl_log(void *, int, SDL_LogPriority, const char *message)
++{
++  LOG_INFO("SDL: {}", message);
++}
++#endif
++
+ void update_fps()
+ {
+   fps_so_far++;
+@@ -344,7 +351,16 @@ int main(int argc, char *argv[])
+ 
+   (void)ResourceManager::getInstance();
+ 
++#if defined(__amigaos__)
++  // started from Workbench (libnix: argc 0, argv the WBStartup message):
++  // the log goes to the file only, SDL's own lines with it, so no console
++  // window opens beside the game
++  Logger::init(ResourceManager::getInstance()->getPrefPath("debug.log"), argc > 0);
++  if (argc == 0)
++    SDL_LogSetOutputFunction(amiga_sdl_log, NULL);
++#else
+   Logger::init(ResourceManager::getInstance()->getPrefPath("debug.log"));
++#endif
+ #if defined(__amigaos__)
+   for (int i = 1; i < argc; i++)
+     if (strcmp(argv[i], "-fps") == 0)
