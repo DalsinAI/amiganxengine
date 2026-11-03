@@ -1,9 +1,8 @@
-/* Grab: the front screen, or a part of it, as a binary PPM file, for
- * showing a lab's Workbench in a README (Cradle's screenshot tool returns
- * the picture to the caller only). Reads the screen's pixels through
- * cybergraphics.library (RTG screens).
+/* Grab: the front screen, or a part of it, as a PNG file, for showing a
+ * lab's screens in a README (Cradle's screenshot tool returns the picture
+ * to the caller only). Reads the screen's pixels through
+ * cybergraphics.library (RTG screens); libpng and zlib from the stove.
  *   Grab FILE [X Y W H]   (default: the whole front screen)
- * Fetch the file with Chop's pieces; convert the PPM to PNG on the PC.
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include <exec/types.h>
 #include <intuition/intuitionbase.h>
@@ -14,6 +13,7 @@
 #include <proto/cybergraphics.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <png.h>
 
 struct Library *CyberGfxBase;
 
@@ -24,6 +24,9 @@ int main(int argc, char **argv)
     long x = 0, y = 0, w, h;
     unsigned char *buf;
     FILE *out;
+    png_structp png;
+    png_infop info;
+    long row;
     if (argc != 2 && argc != 6) {
         fprintf(stderr, "usage: Grab FILE [X Y W H]\n");
         return 20;
@@ -59,8 +62,24 @@ int main(int argc, char **argv)
         CloseLibrary(CyberGfxBase);
         return 20;
     }
-    fprintf(out, "P6\n%ld %ld\n255\n", w, h);
-    fwrite(buf, 3, (size_t)w * (size_t)h, out);
+    png = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+    info = png ? png_create_info_struct(png) : NULL;
+    if (!info || setjmp(png_jmpbuf(png))) {
+        fprintf(stderr, "Grab: libpng failed\n");
+        fclose(out);
+        free(buf);
+        CloseLibrary(CyberGfxBase);
+        return 20;
+    }
+    png_init_io(png, out);
+    png_set_IHDR(png, info, (png_uint_32)w, (png_uint_32)h, 8, PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE,
+                 PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+    png_set_compression_level(png, 9);
+    png_write_info(png, info);
+    for (row = 0; row < h; row++)
+        png_write_row(png, buf + (size_t)row * (size_t)w * 3);
+    png_write_end(png, info);
+    png_destroy_write_struct(&png, &info);
     fclose(out);
     printf("%s: %ld,%ld %ldx%ld of the %dx%d screen \"%s\"\n", argv[1], x, y, w, h, s->Width, s->Height,
            s->Title ? (char *)s->Title : "");
