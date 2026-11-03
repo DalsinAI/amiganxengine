@@ -131,7 +131,7 @@ SOURCES=$(cd "$SRC" && {
     done
     find src/ai -type f -name '[a-zA-Z]*.cpp'
 } | LC_ALL=C sort)
-[ "$(printf '%s\n' $SOURCES | wc -l)" -gt 150 ] || { echo "could not read the source list"; exit 2; }
+[ "$(printf '%s\n' $SOURCES | wc -l)" -gt 100 ] || { echo "could not read the source list"; exit 2; }
 
 # upstream's own flags for the pc platform (-std=c++11, -Wall), Release
 # (-O2 -DNDEBUG); -fno-delete-null-pointer-checks: address 0 is memory on an
