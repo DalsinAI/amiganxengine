@@ -1,0 +1,134 @@
+diff --git a/src/ResourceManager.cpp b/src/ResourceManager.cpp
+index b7115fc..d3a561a 100644
+--- a/src/ResourceManager.cpp
++++ b/src/ResourceManager.cpp
+@@ -11,6 +11,10 @@
+ #include <windows.h>
+ #endif
+ 
++#if defined(__amigaos__)
++#include <sys/stat.h>
++#endif
++
+ #if defined(__VITA__)
+ #include <psp2/io/stat.h>
+ #include <psp2/io/fcntl.h>
+@@ -74,6 +78,18 @@ std::string ResourceManager::getUserPrefPath()
+ {
+ #if defined(__SWITCH__)
+   return std::string("/switch/nxengine/");
++#elif defined(__amigaos__)
++  // AmigaOS: settings, saves and the log in PROGDIR:User, beside the
++  // program (made on first start), not in ENVARC:
++  static bool made = false;
++  if (!made)
++  {
++    struct stat st;
++    if (stat("PROGDIR:User", &st) != 0)
++      mkdir("PROGDIR:User", 0755);
++    made = true;
++  }
++  return std::string("PROGDIR:User/");
+ #else
+   char *path = SDL_GetPrefPath(NULL, "nxengine");
+   if (NULL != path)
+diff --git a/src/main.cpp b/src/main.cpp
+index 017a434..cbc522e 100644
+--- a/src/main.cpp
++++ b/src/main.cpp
+@@ -3,6 +3,7 @@
+ 
+ #include <cstdarg>
+ #include <cstdlib>
++#include <cstring>
+ #if !defined(_WIN32)
+ #include <unistd.h>
+ #else
+@@ -72,6 +73,26 @@ char fname[MAXPATHLEN];
+         return 1;
+ }*/
+ 
++#if defined(__amigaos__)
++// AmigaOS: with -fps, each second's rate of frames shown goes to the log
++bool amiga_log_fps = false;
++static void amiga_fps_tick()
++{
++  static uint32_t start = 0, last = 0;
++  static int frames = 0;
++  uint32_t now = SDL_GetTicks();
++  if (!start)
++    start = last = now;
++  frames++;
++  if (now - last >= 1000)
++  {
++    LOG_INFO("fps {:.1f} at {:.3f} s", frames * 1000.0 / (now - last), (now - start) / 1000.0);
++    frames = 0;
++    last   = now;
++  }
++}
++#endif
++
+ void update_fps()
+ {
+   fps_so_far++;
+@@ -162,6 +183,10 @@ static inline void run_tick()
+     if (!flipacceltime)
+     {
+       Renderer::getInstance()->flip();
++#if defined(__amigaos__)
++      if (amiga_log_fps)
++        amiga_fps_tick();
++#endif
+     }
+     else
+     {
+@@ -302,6 +327,11 @@ int main(int argc, char *argv[])
+   (void)ResourceManager::getInstance();
+ 
+   Logger::init(ResourceManager::getInstance()->getPrefPath("debug.log"));
++#if defined(__amigaos__)
++  for (int i = 1; i < argc; i++)
++    if (strcmp(argv[i], "-fps") == 0)
++      amiga_log_fps = true;
++#endif
+ //  SDL_LogSetAllPriority(SDL_LOG_PRIORITY_VERBOSE);
+   if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0)
+   {
+@@ -329,6 +359,15 @@ int main(int argc, char *argv[])
+     return 1;
+   }
+   Renderer::getInstance()->setFullscreen(settings->fullscreen);
++#if defined(__amigaos__)
++  {
++    SDL_DisplayMode mode;
++    int w, h;
++    SDL_GetWindowSize(Renderer::getInstance()->window(), &w, &h);
++    if (SDL_GetWindowDisplayMode(Renderer::getInstance()->window(), &mode) == 0)
++      LOG_INFO("window {}x{}, {}, display mode {}x{}", w, h, settings->fullscreen ? "full screen" : "windowed", mode.w, mode.h);
++  }
++#endif
+ 
+   //	if (check_data_exists())
+   //	{
+diff --git a/src/settings.cpp b/src/settings.cpp
+index 40213f8..33487c6 100644
+--- a/src/settings.cpp
++++ b/src/settings.cpp
+@@ -79,11 +79,17 @@ bool settings_load(Settings *setfile)
+     memset(setfile, 0, sizeof(Settings));
+ #if defined(__VITA__) || defined(__SWITCH__)
+     setfile->resolution     = 1;
++#elif defined(__amigaos__)
++    setfile->resolution     = 1; // 320x240, the game's own frame, unscaled
+ #else
+     setfile->resolution     = 2; // 640x480 Windowed, should be safe value
+ #endif
+     setfile->last_save_slot = 0;
++#if defined(__amigaos__)
++    setfile->fullscreen     = true; // on a screen of its own
++#else
+     setfile->fullscreen     = false;
++#endif
+ 
+     setfile->sound_enabled = true;
+     setfile->music_enabled = 1; // both Boss and Regular music
