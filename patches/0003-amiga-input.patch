@@ -1,5 +1,5 @@
 diff --git a/src/input.cpp b/src/input.cpp
-index cac7782..b12e758 100644
+index cac7782..23de0f8 100644
 --- a/src/input.cpp
 +++ b/src/input.cpp
 @@ -9,6 +9,9 @@
@@ -133,7 +133,7 @@ index cac7782..b12e758 100644
          ino       = input_get_action_but(but); // mappings[key];
          if (ino != -1)
            inputs[ino] = (evt.jbutton.state == SDL_PRESSED);
-@@ -353,6 +428,9 @@ void input_poll(void)
+@@ -353,12 +428,33 @@ void input_poll(void)
  
        case SDL_JOYHATMOTION:
        {
@@ -143,22 +143,37 @@ index cac7782..b12e758 100644
          if (evt.jhat.value != SDL_HAT_CENTERED)
          {
            last_sdl_action.jhat       = evt.jhat.hat;
-@@ -366,6 +444,14 @@ void input_poll(void)
-             inputs[i] = false;
+           last_sdl_action.jhat_value = evt.jhat.value;
          }
- 
+         ino = input_get_action_hat(evt.jhat.hat, evt.jhat.value); // mappings[key];
 +#if defined(__amigaos__)
-+        // every direction the hat holds, so a diagonal moves both ways
++        // every direction the hat holds, so a diagonal moves both ways; and
++        // let go only what the hat held, so a key held stays held
++        static bool amiga_hat_held[INPUT_COUNT];
 +        for (int i = 0; i < INPUT_COUNT; i++)
 +        {
++          if (mappings[i].jhat == evt.jhat.hat && amiga_hat_held[i])
++          {
++            inputs[i]          = false;
++            amiga_hat_held[i] = false;
++          }
 +          if (mappings[i].jhat == evt.jhat.hat && (evt.jhat.value & mappings[i].jhat_value))
-+            inputs[i] = true;
++          {
++            inputs[i]          = true;
++            amiga_hat_held[i] = true;
++          }
 +        }
-+#endif
++#else
+         // cleanup all hat-binded states
+         for (int i = 0; i < INPUT_COUNT; i++)
+         {
+@@ -368,11 +464,15 @@ void input_poll(void)
+ 
          if (ino != -1)
            inputs[ino] = true;
++#endif
        }
-@@ -373,6 +459,9 @@ void input_poll(void)
+       break;
  
        case SDL_JOYAXISMOTION:
        {
@@ -168,7 +183,46 @@ index cac7782..b12e758 100644
          // this only used for control remapping.
          // for actual in-game handling see below.
          if (evt.jaxis.value > 20000 || evt.jaxis.value < -20000) // dead zone
-@@ -413,6 +502,13 @@ void input_close(void)
+@@ -387,6 +487,30 @@ void input_poll(void)
+ 
+   // handle gamepad sticks
+ 
++#if defined(__amigaos__)
++  // the directions are mapped to the stick by default here, and to the
++  // keys: let go only what the stick held, so a key held stays held
++  static bool amiga_axis_held[INPUT_COUNT];
++  for (int i = 0; i < INPUT_COUNT; i++)
++  {
++    if (mappings[i].jaxis >= 0 && amiga_axis_held[i])
++    {
++      inputs[i]           = false;
++      amiga_axis_held[i] = false;
++    }
++  }
++  for (int ax = 0; ax < SDL_JoystickNumAxes(joy); ax++)
++  {
++    int value = SDL_JoystickGetAxis(joy, ax);
++    ino       = input_get_action_axis(ax, value);
++
++    if (ino != -1 && (value > 20000 || value < -20000))
++    {
++      inputs[ino]           = true;
++      amiga_axis_held[ino] = true;
++    }
++  }
++#else
+   for (int i = 0; i < INPUT_COUNT; i++)
+   {
+     if (mappings[i].jaxis >= 0) // reset all mapped axises
+@@ -404,6 +528,7 @@ void input_poll(void)
+     if (ino != -1 && (value > 20000 || value < -20000))
+       inputs[ino] = true;
+   }
++#endif
+ }
+ 
+ void input_close(void)
+@@ -413,6 +538,13 @@ void input_close(void)
    {
      SDL_JoystickClose(joy);
    }
