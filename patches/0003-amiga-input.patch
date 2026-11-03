@@ -1,19 +1,18 @@
 diff --git a/src/input.cpp b/src/input.cpp
-index cac7782..b5c6858 100644
+index cac7782..b12e758 100644
 --- a/src/input.cpp
 +++ b/src/input.cpp
-@@ -9,6 +9,10 @@
+@@ -9,6 +9,9 @@
  #include "sound/SoundManager.h"
  
  #include <array>
 +#if defined(__amigaos__)
 +#include <cstdio>
-+#include <cstdlib>
 +#endif
  
  in_action mappings[INPUT_COUNT];
  
-@@ -20,6 +24,20 @@ SDL_Joystick *joy;
+@@ -20,6 +23,20 @@ SDL_Joystick *joy;
  int ACCEPT_BUTTON = JUMPKEY;
  int DECLINE_BUTTON = FIREKEY;
  
@@ -34,7 +33,7 @@ index cac7782..b5c6858 100644
  
  bool input_init(void)
  {
-@@ -82,6 +100,37 @@ bool input_init(void)
+@@ -82,6 +99,37 @@ bool input_init(void)
    mappings[ESCKEY].jbut       = 11; // -
  #endif
  
@@ -72,15 +71,19 @@ index cac7782..b5c6858 100644
    mappings[F1KEY].key  = SDLK_F1;
    mappings[F2KEY].key  = SDLK_F2;
    mappings[F3KEY].key  = SDLK_F3;
-@@ -100,6 +149,17 @@ bool input_init(void)
+@@ -100,6 +148,21 @@ bool input_init(void)
    mappings[ENTERKEY].key = SDLK_RETURN;
  
    SDL_InitSubSystem(SDL_INIT_JOYSTICK);
 +#if defined(__amigaos__)
 +  {
-+    const char *path = getenv("NX_INPUT");
++    // SDL_getenv: libnix's getenv did not see the variable here
++    const char *path = SDL_getenv("NX_INPUT");
 +    if (path && *path)
++    {
 +      amiga_input_log = fopen(path, "w");
++      LOG_INFO("Input log: {}{}", path, amiga_input_log ? "" : " (can't open it)");
++    }
 +    LOG_INFO("Joysticks: {}", SDL_NumJoysticks());
 +    for (int i = 0; i < SDL_NumJoysticks(); i++)
 +      LOG_INFO("Joystick {}: \"{}\"{}", i, SDL_JoystickNameForIndex(i),
@@ -90,7 +93,7 @@ index cac7782..b5c6858 100644
    if (SDL_NumJoysticks() > 0)
    {
      // Open joystick
-@@ -112,6 +172,9 @@ bool input_init(void)
+@@ -112,6 +175,9 @@ bool input_init(void)
        LOG_INFO("Number of Axes: {}", SDL_JoystickNumAxes(joy));
        LOG_INFO("Number of Buttons: {}", SDL_JoystickNumButtons(joy));
        LOG_INFO("Number of Balls: {}", SDL_JoystickNumBalls(joy));
@@ -100,7 +103,7 @@ index cac7782..b5c6858 100644
      }
      else
      {
-@@ -255,6 +318,9 @@ void input_poll(void)
+@@ -255,6 +321,9 @@ void input_poll(void)
        case SDL_KEYUP:
        {
          key = evt.key.keysym.sym;
@@ -110,7 +113,7 @@ index cac7782..b5c6858 100644
  
          static uint8_t shiftstates = 0;
  
-@@ -335,6 +401,9 @@ void input_poll(void)
+@@ -335,6 +404,9 @@ void input_poll(void)
        case SDL_JOYBUTTONDOWN:
        {
          Uint8 but            = evt.jbutton.button;
@@ -120,7 +123,7 @@ index cac7782..b5c6858 100644
          last_sdl_action.jbut = but;
          ino                  = input_get_action_but(but); // mappings[key];
          if (ino != -1)
-@@ -345,6 +414,9 @@ void input_poll(void)
+@@ -345,6 +417,9 @@ void input_poll(void)
        case SDL_JOYBUTTONUP:
        {
          Uint8 but = evt.jbutton.button;
@@ -130,7 +133,7 @@ index cac7782..b5c6858 100644
          ino       = input_get_action_but(but); // mappings[key];
          if (ino != -1)
            inputs[ino] = (evt.jbutton.state == SDL_PRESSED);
-@@ -353,6 +425,9 @@ void input_poll(void)
+@@ -353,6 +428,9 @@ void input_poll(void)
  
        case SDL_JOYHATMOTION:
        {
@@ -140,7 +143,7 @@ index cac7782..b5c6858 100644
          if (evt.jhat.value != SDL_HAT_CENTERED)
          {
            last_sdl_action.jhat       = evt.jhat.hat;
-@@ -366,6 +441,14 @@ void input_poll(void)
+@@ -366,6 +444,14 @@ void input_poll(void)
              inputs[i] = false;
          }
  
@@ -155,7 +158,7 @@ index cac7782..b5c6858 100644
          if (ino != -1)
            inputs[ino] = true;
        }
-@@ -373,6 +456,9 @@ void input_poll(void)
+@@ -373,6 +459,9 @@ void input_poll(void)
  
        case SDL_JOYAXISMOTION:
        {
@@ -165,7 +168,7 @@ index cac7782..b5c6858 100644
          // this only used for control remapping.
          // for actual in-game handling see below.
          if (evt.jaxis.value > 20000 || evt.jaxis.value < -20000) // dead zone
-@@ -413,6 +499,13 @@ void input_close(void)
+@@ -413,6 +502,13 @@ void input_close(void)
    {
      SDL_JoystickClose(joy);
    }
