@@ -111,6 +111,7 @@ amicradle `docs/porting/MEASUREMENT.md`).
 | Title and first room, the whole 320x240 frame on a screen of its own | done (49.7 frames a second, the game's rate is 50) |
 | Keyboard play | done (menus, the opening, walking, jumping, the water) |
 | Joystick / CD32 pad | not tested: no stick in the lab (SDL opens port 2 as a game controller) |
+| Sound | AHI opened and fed at 44.1 kHz, no late buffer in 1,844; not heard (muted lab) |
 
 ## Observed
 
@@ -230,6 +231,48 @@ Joystick and CD32 pad: not qualified. The lab has no stick (lowlevel
 reports none in port 2); SDL finds and opens port 2 as a game controller,
 and the mapping above is the default, but no stick or pad event was made.
 A person with a stick or a CD32 pad has to try it.
+
+### Sound, 3 November 2026
+
+Commit `1a78811` adds `patches/0004-amiga-sound.patch`. The sound is
+upstream's own: SDL_mixer mixes the sound effects (Pixtone, rendered from
+the `pxt` files at start) and the music comes from upstream's Organya
+synthesizer through SDL_mixer's music hook, on SDL's audio callback, all
+unchanged. On AmigaOS the patch logs the audio spec SDL_mixer gets and,
+with `-fps`, every five seconds how many buffers were mixed (SDL_mixer's
+post-mix hook, once a buffer), how many of those came more than half a
+buffer late, and how long the mixing took (from the music hook, which
+SDL_mixer calls first, to the post-mix hook, so only buffers with music
+are timed), with a summary at exit. Executable (open5, Cradle job
+`j20261103T024809-894b37`): SHA-256
+`5036fc47b215c8b3c1454955d15df4e55bab62a78cbdb6af14600d69e08ce178`
+(3,630,572 bytes; `receipts/4-sound-open5-stove_build.json`).
+
+In `lab:nxengine`, `nxengine-evo -fps` with upstream's sound settings
+(sound and music on, the original Organya soundtrack), the title (its
+music) for about 40 seconds, New Game, the opening, then two minutes in
+the Start Point with HoldKeys walking and jumping (Right, Left, Z in turn),
+then Quit:
+
+- `SDL audio "ahi": 44100 Hz, 2 channels, format 0x8010, 4096 samples a
+  buffer asked (92.9 ms); SDL_mixer 2.8.2`: SDL's AHI driver through
+  GFOpenGPU's SDL2_mixer.module.
+- **Buffers every five seconds: 53 or 54** in all 32 readings after the
+  first (118, the start-up, when SDL fills its queue): 10.8 a second, as
+  44,100 / 4,096 gives. **None late** in 1,844 buffers.
+- Mixing (music and effects): **2.49 ms on average** for each 92.9 ms
+  buffer (2.7 per cent of the time it plays for), 9.92 ms at the very most.
+- Frames shown: 49.7 a second on average over 168 readings, as without
+  sound measured (44.0 at the lowest, at a stage load).
+- The 26 Organya songs and the effects loaded with no error beyond
+  upstream's 37 absent `pxt` numbers; `Sound system shutdown` at exit.
+
+So the 68040 mixes Organya and the effects at upstream's 44.1 kHz with
+time to spare. Labs are muted: AHI was opened and fed at the full rate,
+which is what a muted lab can show; that it sounds right is still to be
+heard on a real instance. The lab's ahi.device is 6.1.1 (the version with
+the known race that can freeze a lab, amicradle #790); it did not freeze
+in this run.
 
 ### Earlier runs, 24 October 2026
 
