@@ -2,6 +2,8 @@
  * lab's screens in a README (Cradle's screenshot tool returns the picture
  * to the caller only). Reads the screen's pixels through
  * cybergraphics.library (RTG screens); libpng and zlib from the stove.
+ * A picture of 256 colours or fewer is written with a palette (a game's
+ * frame is a few kilobytes then, small enough to fetch from a lab).
  *   Grab FILE [X Y W H]   (default: the whole front screen)
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include <exec/types.h>
@@ -17,6 +19,30 @@
 
 struct Library *CyberGfxBase;
 
+/* the picture's colours, up to 256, as a palette; 0 when there are more */
+static int palette_of(const unsigned char *rgb, long n, png_color *pal, unsigned char *idx)
+{
+    int count = 0;
+    long i;
+    for (i = 0; i < n; i++) {
+        const unsigned char *p = rgb + i * 3;
+        int k;
+        for (k = 0; k < count; k++)
+            if (pal[k].red == p[0] && pal[k].green == p[1] && pal[k].blue == p[2])
+                break;
+        if (k == count) {
+            if (count == 256)
+                return 0;
+            pal[count].red = p[0];
+            pal[count].green = p[1];
+            pal[count].blue = p[2];
+            count++;
+        }
+        idx[i] = (unsigned char)k;
+    }
+    return count;
+}
+
 int main(int argc, char **argv)
 {
     struct Screen *s;
@@ -27,6 +53,9 @@ int main(int argc, char **argv)
     png_structp png;
     png_infop info;
     long row;
+    png_color pal[256];
+    unsigned char *idx;
+    int colours;
     if (argc != 2 && argc != 6) {
         fprintf(stderr, "usage: Grab FILE [X Y W H]\n");
         return 20;
@@ -72,17 +101,23 @@ int main(int argc, char **argv)
         return 20;
     }
     png_init_io(png, out);
-    png_set_IHDR(png, info, (png_uint_32)w, (png_uint_32)h, 8, PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE,
+    idx = malloc((size_t)w * (size_t)h);
+    colours = idx ? palette_of(buf, w * h, pal, idx) : 0;
+    png_set_IHDR(png, info, (png_uint_32)w, (png_uint_32)h, 8,
+                 colours ? PNG_COLOR_TYPE_PALETTE : PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE,
                  PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+    if (colours)
+        png_set_PLTE(png, info, pal, colours);
     png_set_compression_level(png, 9);
     png_write_info(png, info);
     for (row = 0; row < h; row++)
-        png_write_row(png, buf + (size_t)row * (size_t)w * 3);
+        png_write_row(png, colours ? idx + (size_t)row * (size_t)w : buf + (size_t)row * (size_t)w * 3);
+    free(idx);
     png_write_end(png, info);
     png_destroy_write_struct(&png, &info);
     fclose(out);
-    printf("%s: %ld,%ld %ldx%ld of the %dx%d screen \"%s\"\n", argv[1], x, y, w, h, s->Width, s->Height,
-           s->Title ? (char *)s->Title : "");
+    printf("%s: %ld,%ld %ldx%ld of the %dx%d screen \"%s\", %s\n", argv[1], x, y, w, h, s->Width, s->Height,
+           s->Title ? (char *)s->Title : "", colours ? "with a palette" : "RGB");
     free(buf);
     CloseLibrary(CyberGfxBase);
     return 0;
