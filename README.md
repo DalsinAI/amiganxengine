@@ -151,6 +151,7 @@ amicradle `docs/porting/MEASUREMENT.md`).
 | Joystick / CD32 pad | not tested: no stick in the lab (SDL opens port 2 as a game controller) |
 | Sound | AHI opened and fed at 44.1 kHz, no late buffer in 1,844; not heard (muted lab) |
 | Saves and settings in `PROGDIR:User` | saved at a save disk and loaded again after the program restarted; across a cold restart of the lab: not yet tried |
+| Drawer with GlowIcons, LhA archive | built (`nxengine-evo-2.6.5-1f093d1-amigaos3-test1-68040.lha`); installed from the archive and started from its icon: not yet tried |
 
 ## Observed
 
@@ -359,6 +360,29 @@ did. In the first case the game then quit by itself with a clean shutdown
 (an SDL quit event; no menu was used) after a second copy of the game had
 been started beside it and had stopped at once; this was seen once and not
 again.
+
+### Package, 3 November 2026
+
+Commit `06b1405` (`patches/0005-amiga-workbench.patch`, `icons/`,
+`package/`, `tools/`), target `package` (Cradle job
+`j20261103T032941-a1a4bf`, open5, 1 minute 46 seconds):
+
+| Output | Bytes | SHA-256 |
+|---|---|---|
+| `nxengine-evo-2.6.5-1f093d1-amigaos3-test1-68040.lha` | 1,484,766 | `9413c05202df3276863ae02e5c9e5a4ba0ac75462ee4d1d74f55a086ebb16f57` |
+| `NXEngine/nxengine-evo` | 3,631,456 | `4a5ac8f42397da9a4ecb1877add2030956e376685dda64877f17e758f016f239` |
+| `NXEngine.info` (the drawer) | 8,832 | `1b5bb246...5254` |
+| `NXEngine/nxengine-evo.info` | 6,732 | `ff1ff933...0030` |
+
+Eight members: the drawer's icon, the program and its icon, `ReadMe` and
+`LICENSE` with theirs, and `data/ReadMe.txt`; no game data. The icons are
+the committed ones, byte for byte. The receipt is
+`receipts/6-package-open5-stove_build.json`.
+
+Not yet tried in a lab: unpacking the archive on a fresh copy of
+Instance-32, the drawer and its icons on Workbench, the start from the
+game's icon (no console window), and a save that is loaded again after a
+cold restart.
 
 ### Earlier runs, 24 October 2026
 
