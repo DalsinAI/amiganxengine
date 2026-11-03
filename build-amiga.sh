@@ -69,18 +69,27 @@ ARCHIVE=${COMPILER#* }
 "$CC" --version | head -n 1
 "$CC" --version | head -n 1 | grep -q "$RELEASE" || { echo "$CC is not $RELEASE"; exit 2; }
 
-# SDL 2 and its satellites (GFOpenGPU's link stubs), libpng and zlib, all
-# from the stove's SDK
+# SDL 2 and its satellites (GFOpenGPU's link stubs) from the stove's SDK;
+# libpng and zlib: the locked codec inventory staged inside the stove
+# (toolchain/port-dependencies.lock.json, scripts/port_dependencies.py), or
+# the stove SDK's own if it has them. Either way they come from the stove.
 missing=0
 for f in include/SDL2/SDL.h include/SDL2/SDL_mixer.h include/SDL2/SDL_image.h \
-         include/png.h include/zlib.h lib/libSDL2.a lib/libSDL2_mixer.a \
-         lib/libSDL2_image.a lib/libpng.a lib/libz.a; do
+         lib/libSDL2.a lib/libSDL2_mixer.a lib/libSDL2_image.a lib/libGL.a; do
     [ -f "$SDK/$f" ] || { echo "the stove has no $f"; missing=1; }
 done
-if [ "$missing" -ne 0 ]; then
-    ls "$SDK/lib" "$SDK/include" "$SDK/include/SDL2" 2>&1 | head -n 200
+[ "$missing" -eq 0 ] || exit 2
+if DEPS=$(python3 "$HERE/scripts/port_dependencies.py" verify --stove "$STOVE" --require zlib png 2>/dev/null); then
+    CODECS="locked port-deps inside the stove (toolchain/port-dependencies.lock.json)"
+elif [ -f "$SDK/lib/libpng.a" ] && [ -f "$SDK/lib/libz.a" ] && [ -f "$SDK/include/png.h" ] && [ -f "$SDK/include/zlib.h" ]; then
+    DEPS=$SDK
+    CODECS="the stove SDK's own"
+else
+    echo "no libpng/zlib in $STOVE (neither staged port-deps nor the SDK's own)"
+    python3 "$HERE/scripts/port_dependencies.py" verify --stove "$STOVE" --require zlib png || true
     exit 2
 fi
+echo "codecs: $CODECS ($DEPS)"
 
 eval "$(python3 - "$HERE/gameports/catalog.json" <<'EOF'
 import json, shlex, sys
@@ -129,7 +138,7 @@ SOURCES=$(cd "$SRC" && {
 # Amiga
 FLAGS="-noixemul -m68040 -m68881 -pthread -fno-delete-null-pointer-checks
  -std=c++11 -O2 -DNDEBUG -Wall -Wno-attributes -ffile-prefix-map=$SRC=.
- -I$SRC -I$SRC/deps -I$SDK/include/SDL2 -I$SDK/include"
+ -I$SRC -I$SRC/deps -I$SDK/include/SDL2 -I$DEPS/include"
 LIBS="-lSDL2_mixer -lSDL2_image -lSDL2 -lpng -lz -lGL -lm -pthread"
 
 mkdir -p "$SRC/obj"
@@ -143,7 +152,7 @@ if ! (
     OBJS=$(for s in $SOURCES; do printf '%s ' "obj/$(echo "$s" | tr / _).o"; done) &&
     echo "link nxengine-evo" &&
     # shellcheck disable=SC2086
-    "$CXX" -noixemul -m68040 -m68881 -pthread -o nxengine-evo $OBJS -L"$SDK/lib" $LIBS
+    "$CXX" -noixemul -m68040 -m68881 -pthread -o nxengine-evo $OBJS -L"$SDK/lib" -L"$DEPS/lib" $LIBS
 ) > "$OUT/build.log" 2>&1; then
     tail -n 120 "$OUT/build.log"
     exit 1
@@ -162,15 +171,15 @@ mkdir -p "$D"
 cp "$EXE" "$D/nxengine-evo"
 cp "$SRC/LICENSE" "$D/LICENSE"
 
-python3 - "$HERE" "$OUT" "$PIN" "$REPO_REV" "$EPOCH" "$STOVE" "$RELEASE" "$ARCHIVE" <<'EOF'
+python3 - "$HERE" "$OUT" "$PIN" "$REPO_REV" "$EPOCH" "$STOVE" "$RELEASE" "$ARCHIVE" "$DEPS" "$CODECS" <<'EOF'
 import hashlib, json, sys
 from pathlib import Path
-here, out, pin, rev, epoch, stove, release, archive = Path(sys.argv[1]), Path(sys.argv[2]), *sys.argv[3:]
+here, out, pin, rev, epoch, stove, release, archive, deps, codecs = Path(sys.argv[1]), Path(sys.argv[2]), *sys.argv[3:]
 sha = lambda p: hashlib.sha256(Path(p).read_bytes()).hexdigest()
 sdk = Path(stove) / "prefix/m68k-amigaos"
 inputs = ["lib/libSDL2.a", "lib/libSDL2_mixer.a", "lib/libSDL2_image.a", "lib/libGL.a",
-          "lib/libpng.a", "lib/libz.a", "include/SDL2/SDL.h", "include/SDL2/SDL_mixer.h",
-          "include/SDL2/SDL_image.h", "include/png.h", "include/zlib.h"]
+          "include/SDL2/SDL.h", "include/SDL2/SDL_mixer.h", "include/SDL2/SDL_image.h"]
+codec_inputs = ["lib/libpng.a", "lib/libz.a", "include/png.h", "include/zlib.h"]
 drawer = out / "NXEngine"
 receipt = {
     "upstream_commit": pin, "repository_commit": rev, "source_date_epoch": epoch,
@@ -178,6 +187,8 @@ receipt = {
     "patches": {p.name: sha(p) for p in sorted((here / "patches").glob("*.patch"))},
     "compiler_release": release, "compiler_archive_sha256": archive,
     "sdk_inputs": {n: sha(sdk / n) for n in inputs if (sdk / n).is_file()},
+    "codecs": codecs,
+    "codec_inputs": {n: sha(Path(deps) / n) for n in codec_inputs if (Path(deps) / n).is_file()},
     "network": False,
     "executable_sha256": sha(drawer / "nxengine-evo"),
     "executable_bytes": (drawer / "nxengine-evo").stat().st_size,
