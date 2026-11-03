@@ -150,7 +150,7 @@ amicradle `docs/porting/MEASUREMENT.md`).
 | Keyboard play | done (menus, the opening, walking, jumping, the water) |
 | Joystick / CD32 pad | not tested: no stick in the lab (SDL opens port 2 as a game controller) |
 | Sound | AHI opened and fed at 44.1 kHz, no late buffer in 1,844; not heard (muted lab) |
-| Saves and settings in `PROGDIR:User` | saved at a save disk and loaded again after the program restarted; across a cold restart of the lab: not yet tried |
+| Saves and settings in `PROGDIR:User` | saved at a save disk, loaded again after the program restarted and after a cold restart of the lab |
 | Drawer with GlowIcons, LhA archive | built (`nxengine-evo-2.6.5-1f093d1-amigaos3-test1-68040.lha`); installed from the archive and started from its icon: not yet tried |
 
 ## Observed
@@ -345,10 +345,19 @@ In `lab:nxengine` with the sound step's program (`5036fc47...e178`):
 ![Game saved.](docs/observed/step5-game-saved.png)
 ![The title after the save: Load Game offered](docs/observed/step5-title-load-game.png)
 
-Across a cold restart of the lab: not yet tried (the lab could not be
-stopped and started in this session). That is the next check: stop and
-start the lab, start the game, Load Game, and Quote should stand at the
-Start Point's save disk.
+Across a cold restart of the lab, the same day: `lab:nxengine` stopped
+and started again (Cradle's lab stop and start, so the Amiga booted from
+cold), `PROGDIR:User` still held `profile.dat` (1,540 bytes, dated 03:37:20,
+as written) and `settings.dat`. `nxengine-evo -fps` from a Shell:
+`Loading settings...` with no error; the title offered Load Game with the
+cursor on it; Load Game showed slot 1, "Start Point", 3/3 health, and the
+four empty slots (upstream logs `unable to open` for `profile2.dat` to
+`profile5.dat` as it looks); Enter loaded `PROGDIR:User/profile.dat`
+(`Entering stage 13: 'Start Point'`) and Quote stood beside the save disk,
+as saved. Escape, Quit: a clean exit (`fps summary: 48 readings, 49.6 on
+average`, `audio summary: ... 547 buffers ... 0 late`, `Renderer::Close()`).
+
+![The save loaded after a cold restart: Quote at the Start Point's save disk](docs/observed/step5-cold-restart-loaded.png)
 
 Pause on focus: in the same boot the game had been left on the title for
 five minutes; OpenBlanker came on, the game lost the input focus and
