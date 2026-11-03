@@ -87,6 +87,15 @@ resolution and full screen (upstream's menu); the setting is saved. The
 program reads `data/` beside itself (`PROGDIR:data`) and writes only in
 `PROGDIR:User` (made on first start): `settings.dat`, the saves
 (`profile.dat`), `debug.log` and F9's screenshots (`screenshotNNN.png`).
+Controls are upstream's: the cursor keys move (Up looks up, Down
+examines), Z jumps (and accepts), X fires (and goes back), A and S change
+weapon, Q is the inventory, W the map, Escape the menu (Resume, Options,
+Reset, Quit), F9 a screenshot; Options, Controls changes any of them. A
+joystick or CD32 pad in port 2 is mapped by default on AmigaOS (upstream
+maps none): the stick, d-pad or hat moves, red (A) jumps, blue (B) fires;
+on a CD32 pad green and yellow are the map and the inventory, the
+shoulders change weapon and Play is the menu. `SetEnv NX_INPUT
+RAM:input.txt` logs every key, joystick and pad event the game takes.
 `-fps` logs each second's rate of frames shown (`fps 49.9 at 14.057 s`)
 and a summary at exit. The game runs its logic and draws at its own fixed
 50 frames a second.
@@ -100,6 +109,8 @@ amicradle `docs/porting/MEASUREMENT.md`).
 |---|---|
 | Pinned source, reproducible build, receipts | done (open5, Cradle) |
 | Title and first room, the whole 320x240 frame on a screen of its own | done (49.7 frames a second, the game's rate is 50) |
+| Keyboard play | done (menus, the opening, walking, jumping, the water) |
+| Joystick / CD32 pad | not tested: no stick in the lab (SDL opens port 2 as a game controller) |
 
 ## Observed
 
@@ -177,6 +188,48 @@ The pictures are the screen as `Grab` read it (`tests/lab`: the front
 screen through cybergraphics.library, written as PNG with a palette when
 it has 256 colours or fewer); `tests/lab` also has HoldKeys, JoyPort and
 Chop, as amigakobodeluxe has them.
+
+### Controls, 3 November 2026
+
+Commit `be4f213` adds `patches/0003-amiga-input.patch`: on AmigaOS a stick
+or CD32 pad in port 2 (SDL joystick 0) is mapped by default, through the
+stick's axes and the hat, so it works in GFOpenInput's layout and in
+lowlevel.library's; a diagonal on the hat now moves both ways (upstream
+takes one direction); the stick and the hat let go only of what they
+held themselves (upstream clears every direction mapped to an axis each
+frame, which with the default mapping left the cursor keys dead: the first
+build of this step, `ecc1959`, showed it in the lab); what SDL sees is
+logged; `SetEnv NX_INPUT RAM:input.txt` logs every key, joystick and pad
+event (read with `SDL_getenv`: libnix's `getenv` did not see it in the
+`ac0c68a` build). Executable (open5, Cradle job `j20261103T024016-c2e06d`):
+SHA-256 `bf7480e4631c113e233eff51e0765ba9442a35520521ef660d828c39ebb24a2b`
+(3,621,544 bytes; `receipts/3-input-open5-stove_build.json`).
+
+In `lab:nxengine` as for the presentation, `SetEnv NX_INPUT
+SYS:T/input.txt`, `nxengine-evo -fps`:
+
+- What SDL sees (log): `Joysticks: 1`, `Joystick 0: "Amiga joystick port
+  (2): joystick", a game controller`, opened with 6 axes, 21 buttons and 1
+  hat (GFOpenInput's standard layout). `JoyPort` (`tests/lab`) reads
+  lowlevel.library's port 1 (game port 2) as `none` and port 0 (the mouse
+  port) as `unknown`.
+- Keyboard: Z on New Game; `HoldKeys 28 CYCLE 31,32 PERIOD 15` (Z and X in
+  turn) through the opening's dialogue to the Start Point; then the cursor
+  keys held with `HoldKeys`: Quote walked right up onto the ledge by the
+  door, jumped left (Left and Z held) and fell into the water at the foot
+  of the cave (the air counter showed), and jumped out again; Escape,
+  Quit. The input log has all 202 key presses and releases with their
+  times (Z `122`, X `120`, Right `1073741903`, Left `1073741904`), and no
+  joystick event.
+- Frames shown: 49.5 a second on average over 108 readings, 41.9 at the
+  lowest (a stage load), 51.8 at the highest.
+
+![In the water at the foot of the Start Point, the air counter running](docs/observed/step3-start-point-water.png)
+
+Joystick and CD32 pad: not qualified. The lab has no stick (lowlevel
+reports none in port 2); SDL finds and opens port 2 as a game controller,
+and the mapping above is the default, but no stick or pad event was made.
+A person with a stick or a CD32 pad has to try it.
 
 ### Earlier runs, 24 October 2026
 
