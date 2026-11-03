@@ -100,6 +100,11 @@ RAM:input.txt` logs every key, joystick and pad event the game takes.
 and a summary at exit. The game runs its logic and draws at its own fixed
 50 frames a second.
 
+The game pauses (picture and sound) whenever its window loses the input
+focus, as upstream does on every system: a click on Workbench, or a screen
+blanker coming on (OpenBlanker after five idle minutes), stops it. Bring
+its screen to the front (Left-Amiga M) and click in it to carry on.
+
 ## Status
 
 **FIRST LIGHT**, not RELEASE (see Observed below and the release gates in
@@ -112,6 +117,7 @@ amicradle `docs/porting/MEASUREMENT.md`).
 | Keyboard play | done (menus, the opening, walking, jumping, the water) |
 | Joystick / CD32 pad | not tested: no stick in the lab (SDL opens port 2 as a game controller) |
 | Sound | AHI opened and fed at 44.1 kHz, no late buffer in 1,844; not heard (muted lab) |
+| Saves and settings in `PROGDIR:User` | saved at a save disk and loaded again after the program restarted; across a cold restart of the lab: not yet tried |
 
 ## Observed
 
@@ -273,6 +279,53 @@ which is what a muted lab can show; that it sounds right is still to be
 heard on a real instance. The lab's ahi.device is 6.1.1 (the version with
 the known race that can freeze a lab, amicradle #790); it did not freeze
 in this run.
+
+### Saves and settings, 3 November 2026
+
+Nothing new is needed for this step: since `patches/0002-amiga-presentation.patch`
+the settings and the saves are written in `PROGDIR:User`, beside the
+program, and nowhere else (`ENVARC:` is not touched). Upstream keeps up to
+five save slots, `profile.dat` for the first and `profile2.dat` to
+`profile5.dat` for the others, and its settings in `settings.dat` (the last
+slot used, the display, sound and music, the key mapping).
+
+In `lab:nxengine` with the sound step's program (`5036fc47...e178`):
+
+- An earlier start in the same boot had found no settings (`Couldn't open
+  file PROGDIR:User/settings.dat`, defaults) and had the music volume set
+  to 95 in Options, Sound (the default is 100); `settings.dat` was written
+  then (962 bytes, SHA-256 `1d2ecafd...18cb`).
+- Started again: `Loading settings...` with no error, the music volume 95.
+- New Game, the opening, the Start Point; the refill station; up onto the
+  step to the save disk, Down: "Do you want to save?", Yes, slot 1
+  ("available"), "Game saved.". `PROGDIR:User/profile.dat` appeared
+  (1,540 bytes, SHA-256 `eea95349...94c5`, upstream's `Do041220` save
+  with stage 13, the Start Point) and `settings.dat` was written again,
+  byte for byte the same as before.
+- Escape, Quit: back at the title, where Load Game is now offered (it was
+  greyed out before the save); Quit again: a clean exit (`fps summary: 248
+  readings, 49.6 on average`, `audio summary: ... 2713 buffers ... 0 late`,
+  `Renderer::Close()`).
+
+![Do you want to save?](docs/observed/step5-save-prompt.png)
+![Game saved.](docs/observed/step5-game-saved.png)
+![The title after the save: Load Game offered](docs/observed/step5-title-load-game.png)
+
+Across a cold restart of the lab: not yet tried (the lab could not be
+stopped and started in this session). That is the next check: stop and
+start the lab, start the game, Load Game, and Quote should stand at the
+Start Point's save disk.
+
+Pause on focus: in the same boot the game had been left on the title for
+five minutes; OpenBlanker came on, the game lost the input focus and
+paused in upstream's `AppMinimized()` (its log stopped, the Amiga idle).
+That looked like a freeze but was not: Left-Amiga M brought its screen back
+and a click in it resumed it. Repeated on purpose: a click on Workbench
+paused it, its screen to the front alone did not resume it, a click in it
+did. In the first case the game then quit by itself with a clean shutdown
+(an SDL quit event; no menu was used) after a second copy of the game had
+been started beside it and had stopped at once; this was seen once and not
+again.
 
 ### Earlier runs, 24 October 2026
 
