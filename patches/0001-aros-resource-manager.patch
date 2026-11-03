@@ -1,5 +1,5 @@
 diff --git a/src/ResourceManager.cpp b/src/ResourceManager.cpp
-index 1111111..2222222 100644
+index 29355ae..b7115fc 100644
 --- a/src/ResourceManager.cpp
 +++ b/src/ResourceManager.cpp
 @@ -3,7 +3,7 @@
@@ -11,7 +11,7 @@ index 1111111..2222222 100644
  #include <sys/stat.h>
  #elif defined(__HAIKU__)
  #include <posix/sys/stat.h> // ugh
-@@ -20,7 +20,7 @@
+@@ -25,7 +25,7 @@
  
  bool ResourceManager::fileExists(const std::string &filename)
  {

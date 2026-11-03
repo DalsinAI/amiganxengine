@@ -1,0 +1,14 @@
+{
+  "upstream_commit": "1f093d1423cc395eb199230cd609b806ef1daa36",
+  "repository_commit": "f992e084c150830fe3da88e9ae9d1a09011277c8",
+  "data_zip_sha256": "444c4265b5acc11495b8d5b00ef7e7843b5ee8e0f6a5d9c4201ed36adbd018f0",
+  "data_zip_bytes": 1209287,
+  "import_sha256": "10c0ae7e26062dc150eab3dd3553c8a96282018e2e597a855d7e5e9d545060e4",
+  "music_aliases": 26,
+  "files": 661,
+  "sha256sums_sha256": "fc13d802f59fc4536d2d4ef9dabf6c10dc5a71ae43241bfe47ea12840ea35444",
+  "archive_sha256": "15f6468d172aa192ff9ac27b578fad2d75c8dff1af7be882115a361950b0b42e",
+  "archive_bytes": 9000960,
+  "untar_sha256": "2de6090b9ef982dd1137e2e596da348fde51d09bf76b9ef11c604bbac86c7b6d",
+  "policy": "Freeware Cave Story data, fetched from the pinned address and staged for a lab; not committed, not packaged"
+}
