@@ -1,0 +1,161 @@
+diff --git a/src/main.cpp b/src/main.cpp
+index 2c0290f..dae6494 100644
+--- a/src/main.cpp
++++ b/src/main.cpp
+@@ -100,6 +100,14 @@ static void amiga_fps_tick()
+     frames = 0;
+     last   = now;
+   }
++  static uint32_t audio_last = 0;
++  if (!audio_last)
++    audio_last = now;
++  if (now - audio_last >= 5000)
++  {
++    amiga_audio_report((now - audio_last) / 1000.0);
++    audio_last = now;
++  }
+ }
+ #endif
+ 
+diff --git a/src/sound/Organya.cpp b/src/sound/Organya.cpp
+index bb931e1..58b52a8 100644
+--- a/src/sound/Organya.cpp
++++ b/src/sound/Organya.cpp
+@@ -326,6 +326,9 @@ std::function<void(void *, uint8_t *, int)> musicCallback;
+ 
+ void myMusicPlayer(void *udata, uint8_t *stream, int len)
+ {
++#if defined(__amigaos__)
++  amiga_audio_mix_start();
++#endif
+   musicCallback(udata, stream, len);
+ }
+ 
+diff --git a/src/sound/SoundManager.cpp b/src/sound/SoundManager.cpp
+index d29b56e..e9b789e 100644
+--- a/src/sound/SoundManager.cpp
++++ b/src/sound/SoundManager.cpp
+@@ -17,6 +17,64 @@
+ #define MUSIC_ON 1
+ #define MUSIC_BOSS_ONLY 2
+ 
++#if defined(__amigaos__)
++static uint32_t amiga_buffer_ms;               // one buffer's play time, ms x 1000
++static volatile uint32_t amiga_buffers, amiga_late, amiga_last_tick, amiga_mixes;
++static volatile uint64_t amiga_mix_start, amiga_mix_total, amiga_mix_max;
++
++void amiga_audio_mix_start()
++{
++  amiga_mix_start = SDL_GetPerformanceCounter();
++}
++
++static void amiga_postmix(void *, Uint8 *, int)
++{
++  uint32_t now = SDL_GetTicks();
++  if (amiga_last_tick && (now - amiga_last_tick) * 1000 > amiga_buffer_ms * 3 / 2)
++    amiga_late = amiga_late + 1;
++  amiga_last_tick = now;
++  amiga_buffers   = amiga_buffers + 1;
++  if (amiga_mix_start)
++  {
++    uint64_t took = SDL_GetPerformanceCounter() - amiga_mix_start;
++    amiga_mix_start = 0;
++    amiga_mix_total = amiga_mix_total + took;
++    if (took > amiga_mix_max)
++      amiga_mix_max = took;
++    amiga_mixes = amiga_mixes + 1;
++  }
++}
++
++// the whole run's, for the summary at exit
++static uint32_t amiga_all_buffers, amiga_all_late, amiga_all_mixes, amiga_reports;
++static uint32_t amiga_report_low = 0xffffffff, amiga_report_high;
++static uint64_t amiga_all_mix_total, amiga_all_mix_max;
++
++void amiga_audio_report(double seconds)
++{
++  SDL_LockAudio();
++  uint32_t buffers = amiga_buffers, late = amiga_late, mixes = amiga_mixes;
++  uint64_t total = amiga_mix_total, most = amiga_mix_max;
++  amiga_buffers = amiga_late = amiga_mixes = 0;
++  amiga_mix_total = amiga_mix_max = 0;
++  SDL_UnlockAudio();
++  double freq = (double)SDL_GetPerformanceFrequency();
++  amiga_reports++;
++  amiga_all_buffers += buffers;
++  amiga_all_late += late;
++  amiga_all_mixes += mixes;
++  amiga_all_mix_total += total;
++  if (most > amiga_all_mix_max)
++    amiga_all_mix_max = most;
++  if (buffers < amiga_report_low)
++    amiga_report_low = buffers;
++  if (buffers > amiga_report_high)
++    amiga_report_high = buffers;
++  LOG_INFO("audio {} buffers in {:.2f} s, {} late; mixing {:.2f} ms a buffer on average, {:.2f} ms at most ({} with music)",
++           buffers, seconds, late, mixes ? total * 1000.0 / freq / mixes : 0.0, most * 1000.0 / freq, mixes);
++}
++#endif
++
+ namespace NXE
+ {
+ namespace Sound
+@@ -53,6 +111,21 @@ bool SoundManager::init()
+   }
+ #endif
+   Mix_AllocateChannels(64);
++#if defined(__amigaos__)
++  {
++    int freq = 0, channels = 0;
++    Uint16 format = 0;
++    Mix_QuerySpec(&freq, &format, &channels);
++    const SDL_version *v = Mix_Linked_Version();
++    // SDL_mixer opens with 4096 samples a buffer (2048 before 2.0.2)
++    int samples = (SDL_MIXER_PATCHLEVEL >= 2) ? 4096 : 2048;
++    amiga_buffer_ms = freq ? (uint32_t)(samples * 1000000.0 / freq) : 0;
++    LOG_INFO("SDL audio \"{}\": {} Hz, {} channels, format {:#06x}, {} samples a buffer asked ({:.1f} ms); SDL_mixer {}.{}.{}",
++             SDL_GetCurrentAudioDriver() ? SDL_GetCurrentAudioDriver() : "none", freq, channels, format, samples,
++             amiga_buffer_ms / 1000.0, v->major, v->minor, v->patch);
++    Mix_SetPostMix(amiga_postmix, NULL);
++  }
++#endif
+ 
+   std::string path = ResourceManager::getInstance()->getPath("music_dirs.json", false);
+ 
+@@ -125,6 +198,16 @@ void SoundManager::shutdown()
+   Organya::getInstance()->shutdown();
+   Pixtone::getInstance()->shutdown();
+ 
++#if defined(__amigaos__)
++  Mix_SetPostMix(NULL, NULL);
++  if (amiga_reports)
++  {
++    double freq = (double)SDL_GetPerformanceFrequency();
++    LOG_INFO("audio summary: {} readings, {} buffers ({} to {} a reading), {} late; mixing {:.2f} ms a buffer on average, {:.2f} ms at most",
++             amiga_reports, amiga_all_buffers, amiga_report_low, amiga_report_high, amiga_all_late,
++             amiga_all_mixes ? amiga_all_mix_total * 1000.0 / freq / amiga_all_mixes : 0.0, amiga_all_mix_max * 1000.0 / freq);
++  }
++#endif
+   Mix_CloseAudio();
+   Mix_Quit();
+   LOG_INFO("Sound system shutdown");
+diff --git a/src/sound/SoundManager.h b/src/sound/SoundManager.h
+index 1845dc2..0c5db33 100644
+--- a/src/sound/SoundManager.h
++++ b/src/sound/SoundManager.h
+@@ -10,6 +10,15 @@
+ 
+ #define SAMPLE_RATE 44100
+ 
++#if defined(__amigaos__)
++// AmigaOS: the mixer's buffers counted from SDL_mixer's post-mix hook (one
++// call a buffer), with how many came more than half a buffer late and how
++// long the mixing took (from the music hook, which SDL_mixer calls first,
++// to the post-mix hook); main.cpp logs them every five seconds with -fps
++void amiga_audio_mix_start();
++void amiga_audio_report(double seconds);
++#endif
++
+ namespace NXE
+ {
+ namespace Sound

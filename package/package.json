@@ -1,0 +1,23 @@
+{
+  "drawer": "NXEngine",
+  "drawer_icon": "icons/NXEngine.info",
+  "archive": "nxengine-evo-{version}-68040",
+  "members": [
+    {"name": "nxengine-evo", "build": "NXEngine/nxengine-evo", "check": "executable_sha256"},
+    {"name": "nxengine-evo.info", "repo": "icons/nxengine-evo.info"},
+    {"name": "ReadMe", "readme": "package/ReadMe.in"},
+    {"name": "ReadMe.info", "repo": "icons/ReadMe.info"},
+    {"name": "LICENSE", "build": "NXEngine/LICENSE"},
+    {"name": "LICENSE.info", "repo": "icons/LICENSE.info"},
+    {"name": "data/ReadMe.txt", "repo": "package/data-ReadMe.txt"}
+  ],
+  "aminet": [
+    ["Short", "Cave Story engine (NXEngine-evo), 68040+FPU"],
+    ["Author", "NXEngine-evo: its authors; port: AmiCradle Team"],
+    ["Uploader", "AmiCradle Team"],
+    ["Type", "game/jump"],
+    ["Version", "{version}"],
+    ["Requires", "AmigaOS 3.2, 68040/68060 with FPU, GFOpenGPU SDL2, AHI, Cave Story data"],
+    ["Architecture", "m68k-amigaos >= 3.2"]
+  ]
+}

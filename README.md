@@ -100,9 +100,78 @@ RAM:input.txt` logs every key, joystick and pad event the game takes.
 and a summary at exit. The game runs its logic and draws at its own fixed
 50 frames a second.
 
+The game pauses (picture and sound) whenever its window loses the input
+focus, as upstream does on every system: a click on Workbench, or a screen
+blanker coming on (OpenBlanker after five idle minutes), stops it. Bring
+its screen to the front (Left-Amiga M) and click in it to carry on.
+
+## Package and icons
+
+Target `package` (`package/build-amiga.sh`) builds the game as `.` does and
+packs the release archive with `tools/make_package.py` (from
+amigaopentyrian): `nxengine-evo-VERSION-68040.lha` (LhA level-1, `-lh5-`,
+written by `tools/lha_archive.py`) holding the `NXEngine` drawer and
+`NXEngine.info` beside it, with the `.sha256`, an Aminet `.readme`,
+`package.json`, the drawer as it unpacks and `NXEngine.tar` (for a lab:
+`untar` unpacks it on the Amiga). `package/package.json` lists what goes in
+the drawer: the program, `ReadMe` (from `package/ReadMe.in`), `LICENSE`
+(the engine's GPL-3.0) and `data/ReadMe.txt`, which says where the Cave
+Story data comes from. The data itself is not packed
+(`gameports/runtime-data.json`'s policy: the freeware game may be passed on
+as it is, but this is a laid-out mirror of it, so it is fetched and staged,
+never republished from here).
+
+The drawer, the game and the documents have OS 3.5 GlowIcons (`icons/*.info`):
+the classic four-colour picture for older Workbenches and two colour frames,
+drawn from NXEngine-evo's own program icon (`icons/art/nxengine.png`, from
+upstream's `platform/xdg/org.nxengine.nxengine_evo.png` at the pinned
+commit). The game's icon asks for a 256 KB stack. They are committed, so the
+package needs nothing else; to draw them again (they come out byte for byte),
+with a DalsinAI/amicradle checkout:
+
+```sh
+python3 ../amicradle/scripts/port_icons.py icons/icons.json --out icons
+```
+
+`patches/0005-amiga-workbench.patch` (AmigaOS only): started from its icon
+(libnix gives `argc` 0), the game logs to `User/debug.log` alone, with SDL's
+own lines in it, so no console window opens beside the game; from a Shell it
+logs to both, as before.
+
+### Installing from the archive
+
+Unpack it where you keep games (`lha x
+nxengine-evo-2.6.5-1f093d1-amigaos3-test1-68040.lha Work:Games/`): it makes
+the drawer `NXEngine` and `NXEngine.info` beside it. OS 3.2 has no `lha`; on
+AmiCradle, `SYS:Utilities/OpenCompress x nxengine-...-68040.lha Work:Games`
+does the same (`OpenCompress t` tests it first). Then the Cave Story data
+in the drawer (Game data above: `untar nx-data.tar Work:Games/NXEngine`, or
+`tar -xf` on a PC); it fills `data/`, and the data's own `ReadMe.txt`
+takes the place of the archive's note there.
+
+The program needs GFOpenGPU's `SDL2.module`, `SDL2_mixer.module` and
+`SDL2_image.module` in `LIBS:GFOpenGPU/`, AHI for sound, and a 68040 or
+68060 with its FPU. An older system may have them only in `LIBS:OpenGPU/`;
+then the game stops at once with `SDL 2: this program needs
+LIBS:GFOpenGPU/SDL2.module (GFOpenGPU), which isn't installed.` (return code
+20 from a Shell; from its icon nothing appears). Make the drawer and copy
+them in:
+
+```
+MakeDir LIBS:GFOpenGPU
+Copy LIBS:OpenGPU/SDL2_mixer.module LIBS:GFOpenGPU/
+Copy LIBS:OpenGPU/SDL2_image.module LIBS:GFOpenGPU/
+Copy SDL2.module LIBS:GFOpenGPU/
+Copy SDL2.module LIBS:OpenGPU/
+```
+
+with `SDL2.module` from gfopenrtg's main of 2 November 2026 or later
+(older ones have no real full screen). Then open `nxengine-evo` from its
+icon (Work, Games, NXEngine).
+
 ## Status
 
-**FIRST LIGHT**, not RELEASE (see Observed below and the release gates in
+**TESTING**, not RELEASE (see Observed below and the release gates in
 amicradle `docs/porting/MEASUREMENT.md`).
 
 | Gate | State |
@@ -111,6 +180,11 @@ amicradle `docs/porting/MEASUREMENT.md`).
 | Title and first room, the whole 320x240 frame on a screen of its own | done (49.7 frames a second, the game's rate is 50) |
 | Keyboard play | done (menus, the opening, walking, jumping, the water) |
 | Joystick / CD32 pad | not tested: no stick in the lab (SDL opens port 2 as a game controller) |
+| Sound | AHI opened and fed at 44.1 kHz, no late buffer in 1,844; not heard (muted lab) |
+| Saves and settings in `PROGDIR:User` | saved at a save disk, loaded again after the program restarted and after a cold restart of the lab |
+| Drawer with GlowIcons, ReadMe, start from Workbench, LhA archive | done (`nxengine-evo-2.6.5-1f093d1-amigaos3-test1-68040.lha`) |
+| Fresh instance from the LhA alone: unpack on the Amiga, icon start, play, save, quit, cold restart, load | done (a new copy of Instance-32, 3 November 2026; the data added beside it, as it is not in the archive) |
+| AGA without RTG, play after the first cave, a person playing for a while | not done |
 
 ## Observed
 
@@ -230,6 +304,198 @@ Joystick and CD32 pad: not qualified. The lab has no stick (lowlevel
 reports none in port 2); SDL finds and opens port 2 as a game controller,
 and the mapping above is the default, but no stick or pad event was made.
 A person with a stick or a CD32 pad has to try it.
+
+### Sound, 3 November 2026
+
+Commit `1a78811` adds `patches/0004-amiga-sound.patch`. The sound is
+upstream's own: SDL_mixer mixes the sound effects (Pixtone, rendered from
+the `pxt` files at start) and the music comes from upstream's Organya
+synthesizer through SDL_mixer's music hook, on SDL's audio callback, all
+unchanged. On AmigaOS the patch logs the audio spec SDL_mixer gets and,
+with `-fps`, every five seconds how many buffers were mixed (SDL_mixer's
+post-mix hook, once a buffer), how many of those came more than half a
+buffer late, and how long the mixing took (from the music hook, which
+SDL_mixer calls first, to the post-mix hook, so only buffers with music
+are timed), with a summary at exit. Executable (open5, Cradle job
+`j20261103T024809-894b37`): SHA-256
+`5036fc47b215c8b3c1454955d15df4e55bab62a78cbdb6af14600d69e08ce178`
+(3,630,572 bytes; `receipts/4-sound-open5-stove_build.json`).
+
+In `lab:nxengine`, `nxengine-evo -fps` with upstream's sound settings
+(sound and music on, the original Organya soundtrack), the title (its
+music) for about 40 seconds, New Game, the opening, then two minutes in
+the Start Point with HoldKeys walking and jumping (Right, Left, Z in turn),
+then Quit:
+
+- `SDL audio "ahi": 44100 Hz, 2 channels, format 0x8010, 4096 samples a
+  buffer asked (92.9 ms); SDL_mixer 2.8.2`: SDL's AHI driver through
+  GFOpenGPU's SDL2_mixer.module.
+- **Buffers every five seconds: 53 or 54** in all 32 readings after the
+  first (118, the start-up, when SDL fills its queue): 10.8 a second, as
+  44,100 / 4,096 gives. **None late** in 1,844 buffers.
+- Mixing (music and effects): **2.49 ms on average** for each 92.9 ms
+  buffer (2.7 per cent of the time it plays for), 9.92 ms at the very most.
+- Frames shown: 49.7 a second on average over 168 readings, as without
+  sound measured (44.0 at the lowest, 51.8 at the highest).
+- The 26 Organya songs and the effects loaded with no error beyond
+  upstream's 37 absent `pxt` numbers; `Sound system shutdown` at exit.
+
+So the 68040 mixes Organya and the effects at upstream's 44.1 kHz with
+time to spare. Labs are muted: AHI was opened and fed at the full rate,
+which is what a muted lab can show; that it sounds right is still to be
+heard on a real instance. The lab's ahi.device is 6.1.1 (the version with
+the known race that can freeze a lab, amicradle #790); it did not freeze
+in this run.
+
+### Saves and settings, 3 November 2026
+
+Nothing new is needed for this step: since `patches/0002-amiga-presentation.patch`
+the settings and the saves are written in `PROGDIR:User`, beside the
+program, and nowhere else (`ENVARC:` is not touched). Upstream keeps up to
+five save slots, `profile.dat` for the first and `profile2.dat` to
+`profile5.dat` for the others, and its settings in `settings.dat` (the last
+slot used, the display, sound and music, the key mapping).
+
+In `lab:nxengine` with the sound step's program (`5036fc47...e178`):
+
+- An earlier start in the same boot had found no settings (`Couldn't open
+  file PROGDIR:User/settings.dat`, defaults) and had the music volume set
+  to 95 in Options, Sound (the default is 100); `settings.dat` was written
+  then (962 bytes, SHA-256 `1d2ecafd...18cb`).
+- Started again: `Loading settings...` with no error, the music volume 95.
+- New Game, the opening, the Start Point; the refill station; up onto the
+  step to the save disk, Down: "Do you want to save?", Yes, slot 1
+  ("available"), "Game saved.". `PROGDIR:User/profile.dat` appeared
+  (1,540 bytes, SHA-256 `eea95349...94c5`, upstream's `Do041220` save
+  with stage 13, the Start Point) and `settings.dat` was written again,
+  byte for byte the same as before.
+- Escape, Quit: back at the title, where Load Game is now offered (it was
+  greyed out before the save); Quit again: a clean exit (`fps summary: 248
+  readings, 49.6 on average`, `audio summary: ... 2713 buffers ... 0 late`,
+  `Renderer::Close()`).
+
+![Do you want to save?](docs/observed/step5-save-prompt.png)
+![Game saved.](docs/observed/step5-game-saved.png)
+![The title after the save: Load Game offered](docs/observed/step5-title-load-game.png)
+
+Across a cold restart of the lab, the same day: `lab:nxengine` stopped
+and started again (Cradle's lab stop and start, so the Amiga booted from
+cold), `PROGDIR:User` still held `profile.dat` (1,540 bytes, dated 03:37:20,
+as written) and `settings.dat`. `nxengine-evo -fps` from a Shell:
+`Loading settings...` with no error; the title offered Load Game with the
+cursor on it; Load Game showed slot 1, "Start Point", 3/3 health, and the
+four empty slots (upstream logs `unable to open` for `profile2.dat` to
+`profile5.dat` as it looks); Enter loaded `PROGDIR:User/profile.dat`
+(`Entering stage 13: 'Start Point'`) and Quote stood beside the save disk,
+as saved. Escape, Quit: a clean exit (`fps summary: 48 readings, 49.6 on
+average`, `audio summary: ... 547 buffers ... 0 late`, `Renderer::Close()`).
+
+![The save loaded after a cold restart: Quote at the Start Point's save disk](docs/observed/step5-cold-restart-loaded.png)
+
+Pause on focus: in the same boot the game had been left on the title for
+five minutes; OpenBlanker came on, the game lost the input focus and
+paused in upstream's `AppMinimized()` (its log stopped, the Amiga idle).
+That looked like a freeze but was not: Left-Amiga M brought its screen back
+and a click in it resumed it. Repeated on purpose: a click on Workbench
+paused it, its screen to the front alone did not resume it, a click in it
+did. In the first case the game then quit by itself with a clean shutdown
+(an SDL quit event; no menu was used) after a second copy of the game had
+been started beside it and had stopped at once; this was seen once and not
+again.
+
+### Package, 3 November 2026
+
+Commit `06b1405` (`patches/0005-amiga-workbench.patch`, `icons/`,
+`package/`, `tools/`), target `package` (Cradle job
+`j20261103T032941-a1a4bf`, open5, 1 minute 46 seconds):
+
+| Output | Bytes | SHA-256 |
+|---|---|---|
+| `nxengine-evo-2.6.5-1f093d1-amigaos3-test1-68040.lha` | 1,484,766 | `9413c05202df3276863ae02e5c9e5a4ba0ac75462ee4d1d74f55a086ebb16f57` |
+| `NXEngine/nxengine-evo` | 3,631,456 | `4a5ac8f42397da9a4ecb1877add2030956e376685dda64877f17e758f016f239` |
+| `NXEngine.info` (the drawer) | 8,832 | `1b5bb246...5254` |
+| `NXEngine/nxengine-evo.info` | 6,732 | `ff1ff933...0030` |
+
+Eight members: the drawer's icon, the program and its icon, `ReadMe` and
+`LICENSE` with theirs, and `data/ReadMe.txt`; no game data. The icons are
+the committed ones, byte for byte. The receipt is
+`receipts/6-package-open5-stove_build.json`.
+
+### Play test from the archive, 3 November 2026
+
+The archive above (job `j20261103T032941-a1a4bf`, SHA-256 `9413c052...6f57`)
+on `lab:nxengine-fresh`, a new copy of Instance-32 made for this test
+(AC090 JIT, 68040 + FPU, RTG 1920x1080, AHI, muted). Nothing of the port was
+on it before; it had SDL 2 only in `LIBS:OpenGPU/` (an older
+`SDL2.module`, `6c85c04c...ef6a`) and no `LIBS:GFOpenGPU/`. Into `SYS:` went
+the archive alone, the data job's `nx-data.tar` and `untar` (job
+`j20261103T021128-d3f6dc`; the data is not in the archive), and
+`SDL2.module` from gfopenrtg main `77fb11f` (job `j20261103T015054-a27024`,
+`e923d22a...bb4d`). Then, on the Amiga:
+
+1. `OpenCompress t` on the archive: "8 files tested, 3700968 bytes, all
+   good". `OpenCompress x` into `Work:Games`: "8 files extracted";
+   `Work:Games/NXEngine.info` and the drawer with `nxengine-evo`, its icon,
+   `ReadMe`, `LICENSE`, their icons and `data/ReadMe.txt`. The unpacked
+   program, `ReadMe`, `LICENSE`, `data/ReadMe.txt`, the drawer's icon and
+   the game's icon have the job's SHA-256s.
+2. `untar nx-data.tar Work:Games/NXEngine`: "661 files, 8463394 bytes"
+   (the data's own `ReadMe.txt`, 873 bytes, replaced the archive's note).
+3. Before the modules were in, `nxengine-evo` from a Shell stopped at once
+   (return code 20): `SDL 2: this program needs LIBS:GFOpenGPU/SDL2.module
+   (GFOpenGPU), which isn't installed.` (it had made an empty `User`, taken
+   away again). Made as Installing from the archive says: `LIBS:GFOpenGPU/`
+   with gfopenrtg's `SDL2.module` and the instance's own
+   `SDL2_mixer.module` and `SDL2_image.module`, and gfopenrtg's
+   `SDL2.module` in `LIBS:OpenGPU/` too.
+4. Workbench: Work, Games (the `NXEngine` drawer's GlowIcon among the
+   others), NXEngine (the game's icon with `LICENSE` and `ReadMe` beside
+   it; `data` has no icon). The game's icon selected (its second frame),
+   then Right-Amiga O: the game started on its own 320x240 screen, with no
+   console window, found its data and made `User` beside itself; the log
+   went to `User/debug.log` alone (`No saved settings; using defaults`,
+   `opengpu renderer`, `display mode 320x240`, `SDL audio "ahi": 44100 Hz`).
+5. New Game, the opening (the transmission, the dialogue) with HoldKeys
+   (`tests/lab`, job `j20261103T084436-5bf198`), the Start Point; Quote
+   walked right past the refill station, jumped onto the step and stood on
+   the save disk; Down: "Do you want to save?", Yes, slot 1 ("available"),
+   "Game saved.": `User/profile.dat` (1,540 bytes, SHA-256
+   `57924a325e9f507cf059967cbf27f633961676b88c7955fde05d9a637a426684`) and
+   `User/settings.dat` (962 bytes). Then 45 seconds walking and jumping
+   left and right in turn with HoldKeys, down into the water at the foot of
+   the cave (the air counter ran) and out again.
+6. Escape, Quit: a clean exit (`Script engine shutdown`, `Sound system
+   shutdown`, `Renderer::Close()`) and the Workbench back.
+7. The lab stopped and started again (Cradle's lab stop and start, a cold
+   boot). `User` still held `profile.dat` and `settings.dat` as written.
+   The game's icon again (Work, Games, NXEngine, select, Right-Amiga O):
+   `Loading settings...` with no error; the title with Load Game offered
+   and the cursor on it; Load Game showed slot 1, "Start Point", 3/3
+   health; Enter loaded `PROGDIR:User/profile.dat` (`Entering stage 13:
+   'Start Point'`) and Quote stood on the save disk, as saved. The save was
+   byte for byte the one written before the restart (`57924a32...6684`).
+   Escape, Quit: a clean exit again.
+
+![The Games drawer: NXEngine's drawer icon chosen](docs/observed/step6-wb-games.png)
+![The NXEngine drawer window: the game, its ReadMe and LICENSE](docs/observed/step6-wb-drawer.png)
+![The game's icon chosen: its second frame](docs/observed/step6-wb-drawer-selected.png)
+![The title, started from the icon](docs/observed/step6-title-from-icon.png)
+![The Start Point: the refill station and the save disk](docs/observed/step6-play-start-point.png)
+![Game saved.](docs/observed/step6-game-saved.png)
+![Playing on: in the water, the air counter running](docs/observed/step6-play-water.png)
+![After the cold restart: Load Game, slot 1](docs/observed/step6-load-game-after-cold-restart.png)
+![The save loaded: Quote on the save disk](docs/observed/step6-loaded-after-cold-restart.png)
+
+(The game pictures are Cradle's screenshots of the RTG head at 320x240; the
+Workbench ones are its 1920x1080 screenshots cut to the window.)
+
+Started from the icon, the game is not given `-fps`, so this run has no
+frame-rate or buffer summary; the Shell runs above measured those. The
+`ReadMe` in the archive gives `lha x` to unpack it, which OS 3.2 does not
+have; Installing from the archive above names OpenCompress.
+
+Not covered: a Workbench with no GlowIcon support (OS 3.1), AGA without
+RTG, a stick or CD32 pad, the sound heard, and play past the first cave.
 
 ### Earlier runs, 24 October 2026
 
