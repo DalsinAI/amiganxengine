@@ -1,0 +1,181 @@
+diff --git a/src/input.cpp b/src/input.cpp
+index cac7782..b5c6858 100644
+--- a/src/input.cpp
++++ b/src/input.cpp
+@@ -9,6 +9,10 @@
+ #include "sound/SoundManager.h"
+ 
+ #include <array>
++#if defined(__amigaos__)
++#include <cstdio>
++#include <cstdlib>
++#endif
+ 
+ in_action mappings[INPUT_COUNT];
+ 
+@@ -20,6 +24,20 @@ SDL_Joystick *joy;
+ int ACCEPT_BUTTON = JUMPKEY;
+ int DECLINE_BUTTON = FIREKEY;
+ 
++#if defined(__amigaos__)
++// AmigaOS: SetEnv NX_INPUT RAM:input.txt logs every key, joystick and pad
++// event the game takes, with its time
++static FILE *amiga_input_log = NULL;
++static void amiga_input_event(const char *what, int a, int b)
++{
++  if (!amiga_input_log)
++    return;
++  uint32_t t = SDL_GetTicks();
++  fprintf(amiga_input_log, "%u.%03u %s %d %d\n", (unsigned)(t / 1000), (unsigned)(t % 1000), what, a, b);
++  fflush(amiga_input_log);
++}
++#endif
++
+ 
+ bool input_init(void)
+ {
+@@ -82,6 +100,37 @@ bool input_init(void)
+   mappings[ESCKEY].jbut       = 11; // -
+ #endif
+ 
++#if defined(__amigaos__)
++  // a stick or a CD32 pad in port 2, SDL joystick 0 (GFOpenInput's layout,
++  // which is SDL's game controller layout; lowlevel.library's starts the
++  // same): the stick, d-pad or hat moves, red (A) jumps, blue (B) fires; on a
++  // CD32 pad green and yellow (X, Y) are the map and the inventory, the
++  // shoulders (reverse, forward) change weapon, Play (Start) is the menu
++  mappings[LEFTKEY].jaxis       = 0;
++  mappings[LEFTKEY].jaxis_value = -1;
++  mappings[RIGHTKEY].jaxis       = 0;
++  mappings[RIGHTKEY].jaxis_value = 1;
++  mappings[UPKEY].jaxis       = 1;
++  mappings[UPKEY].jaxis_value = -1;
++  mappings[DOWNKEY].jaxis       = 1;
++  mappings[DOWNKEY].jaxis_value = 1;
++  mappings[LEFTKEY].jhat        = 0;
++  mappings[LEFTKEY].jhat_value  = SDL_HAT_LEFT;
++  mappings[RIGHTKEY].jhat       = 0;
++  mappings[RIGHTKEY].jhat_value = SDL_HAT_RIGHT;
++  mappings[UPKEY].jhat          = 0;
++  mappings[UPKEY].jhat_value    = SDL_HAT_UP;
++  mappings[DOWNKEY].jhat        = 0;
++  mappings[DOWNKEY].jhat_value  = SDL_HAT_DOWN;
++  mappings[JUMPKEY].jbut      = 0;
++  mappings[FIREKEY].jbut      = 1;
++  mappings[MAPSYSTEMKEY].jbut = 2;
++  mappings[INVENTORYKEY].jbut = 3;
++  mappings[ESCKEY].jbut       = 6;
++  mappings[PREVWPNKEY].jbut   = 9;
++  mappings[NEXTWPNKEY].jbut   = 10;
++#endif
++
+   mappings[F1KEY].key  = SDLK_F1;
+   mappings[F2KEY].key  = SDLK_F2;
+   mappings[F3KEY].key  = SDLK_F3;
+@@ -100,6 +149,17 @@ bool input_init(void)
+   mappings[ENTERKEY].key = SDLK_RETURN;
+ 
+   SDL_InitSubSystem(SDL_INIT_JOYSTICK);
++#if defined(__amigaos__)
++  {
++    const char *path = getenv("NX_INPUT");
++    if (path && *path)
++      amiga_input_log = fopen(path, "w");
++    LOG_INFO("Joysticks: {}", SDL_NumJoysticks());
++    for (int i = 0; i < SDL_NumJoysticks(); i++)
++      LOG_INFO("Joystick {}: \"{}\"{}", i, SDL_JoystickNameForIndex(i),
++               SDL_IsGameController(i) ? ", a game controller" : "");
++  }
++#endif
+   if (SDL_NumJoysticks() > 0)
+   {
+     // Open joystick
+@@ -112,6 +172,9 @@ bool input_init(void)
+       LOG_INFO("Number of Axes: {}", SDL_JoystickNumAxes(joy));
+       LOG_INFO("Number of Buttons: {}", SDL_JoystickNumButtons(joy));
+       LOG_INFO("Number of Balls: {}", SDL_JoystickNumBalls(joy));
++#if defined(__amigaos__)
++      LOG_INFO("Number of Hats: {}", SDL_JoystickNumHats(joy));
++#endif
+     }
+     else
+     {
+@@ -255,6 +318,9 @@ void input_poll(void)
+       case SDL_KEYUP:
+       {
+         key = evt.key.keysym.sym;
++#if defined(__amigaos__)
++        amiga_input_event(evt.type == SDL_KEYDOWN ? "key-down" : "key-up", key, evt.key.keysym.scancode);
++#endif
+ 
+         static uint8_t shiftstates = 0;
+ 
+@@ -335,6 +401,9 @@ void input_poll(void)
+       case SDL_JOYBUTTONDOWN:
+       {
+         Uint8 but            = evt.jbutton.button;
++#if defined(__amigaos__)
++        amiga_input_event("joy-button-down", evt.jbutton.which, but);
++#endif
+         last_sdl_action.jbut = but;
+         ino                  = input_get_action_but(but); // mappings[key];
+         if (ino != -1)
+@@ -345,6 +414,9 @@ void input_poll(void)
+       case SDL_JOYBUTTONUP:
+       {
+         Uint8 but = evt.jbutton.button;
++#if defined(__amigaos__)
++        amiga_input_event("joy-button-up", evt.jbutton.which, but);
++#endif
+         ino       = input_get_action_but(but); // mappings[key];
+         if (ino != -1)
+           inputs[ino] = (evt.jbutton.state == SDL_PRESSED);
+@@ -353,6 +425,9 @@ void input_poll(void)
+ 
+       case SDL_JOYHATMOTION:
+       {
++#if defined(__amigaos__)
++        amiga_input_event("joy-hat", evt.jhat.hat, evt.jhat.value);
++#endif
+         if (evt.jhat.value != SDL_HAT_CENTERED)
+         {
+           last_sdl_action.jhat       = evt.jhat.hat;
+@@ -366,6 +441,14 @@ void input_poll(void)
+             inputs[i] = false;
+         }
+ 
++#if defined(__amigaos__)
++        // every direction the hat holds, so a diagonal moves both ways
++        for (int i = 0; i < INPUT_COUNT; i++)
++        {
++          if (mappings[i].jhat == evt.jhat.hat && (evt.jhat.value & mappings[i].jhat_value))
++            inputs[i] = true;
++        }
++#endif
+         if (ino != -1)
+           inputs[ino] = true;
+       }
+@@ -373,6 +456,9 @@ void input_poll(void)
+ 
+       case SDL_JOYAXISMOTION:
+       {
++#if defined(__amigaos__)
++        amiga_input_event("joy-axis", evt.jaxis.axis, evt.jaxis.value);
++#endif
+         // this only used for control remapping.
+         // for actual in-game handling see below.
+         if (evt.jaxis.value > 20000 || evt.jaxis.value < -20000) // dead zone
+@@ -413,6 +499,13 @@ void input_close(void)
+   {
+     SDL_JoystickClose(joy);
+   }
++#if defined(__amigaos__)
++  if (amiga_input_log)
++  {
++    fclose(amiga_input_log);
++    amiga_input_log = NULL;
++  }
++#endif
+ }
+ 
+ /*
