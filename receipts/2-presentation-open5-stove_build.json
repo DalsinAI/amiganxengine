@@ -1,0 +1,45 @@
+{
+  "upstream_commit": "1f093d1423cc395eb199230cd609b806ef1daa36",
+  "repository_commit": "f77fa7156316b69fb911bfdc4ae495bf6fb72096",
+  "source_date_epoch": "1772590435",
+  "recipe": {
+    "build-amiga.sh": "dd156226e061dbf2764aaa6c1faae0fdced7bfdac7064880f6ebd902e915beca",
+    "patch_amigaos3_deps.py": "787983c1f4c9efc794aa74290ce78b8f990f9d73ea35d13db311ae71f4ca1c9b",
+    "amiga/spdlog_lib.cpp": "1a8d8d28fc48a176403f32dfe0e31c20e412ace774bda3065258324ad0bc49f6"
+  },
+  "patches": {
+    "0001-aros-resource-manager.patch": "d75666ffbef21be833a39d0173295a478b4bf53a6b9f202a82709c1c0c41887f",
+    "0002-amiga-presentation.patch": "c0635e443cf00626dd9255b5b81bda2a22bd9499d918d3a3e945160b8c100737"
+  },
+  "compiler_release": "16.2.0-open5",
+  "compiler_archive_sha256": "unpublished",
+  "sdk_inputs": {
+    "lib/libSDL2.a": "215d6ea9a61c690274596009ae5e7c4d1c2b3ba8f0a70129d6557abdf4230397",
+    "lib/libSDL2_mixer.a": "07caf8b29e1a599799f627083058f2856f32e00b590c6e1f541d864af86e696c",
+    "lib/libSDL2_image.a": "758b8ecda0620688f2745b73deef9611e80f999341232b01618a42383da35da6",
+    "lib/libGL.a": "922247c40ca2aceda1f5a0e4517e5a4e0a7bc16b056e659235ccde0b839f6d39",
+    "include/SDL2/SDL.h": "952e89e1dc4e0dd1a7bea6a153df632b8cdb6e433a9b3b0702c5ffe15b9b9360",
+    "include/SDL2/SDL_mixer.h": "d7284c74e5abe94049b5b483084edd0980faa0050144631931a7359c14f35851",
+    "include/SDL2/SDL_image.h": "f72b0187df3b81109d0a561db0fbde3f1be1ee10f30552a9fd4756ae11bcf7fd"
+  },
+  "codecs": "locked port-deps inside the stove (toolchain/port-dependencies.lock.json)",
+  "codec_inputs": {
+    "lib/libpng.a": "499b38c6b459121bd9ad5b2c68fa448c25ccfd2ba60ad201e71a453d4b164421",
+    "lib/libz.a": "0df1c8b8e34a4a9eb39d74f3a5f4d525aa35f0cab38ef15394b458e5edcc2552",
+    "include/png.h": "81501c268ec5c3dc79efc6ac9fddb63b22a25e4931360ddd7b29b1744d6cb6b8",
+    "include/zlib.h": "71e0dcf4cacb6b1674550a3d9407344746d27cdce739e6e25189d0b620b005ed"
+  },
+  "network": false,
+  "executable_sha256": "eef9c8b853276e218ac196c711a2cc744ff649bd14ad0f22fd13b4730016f214",
+  "executable_bytes": 3617972,
+  "scope": "Source build only; no network code; no game data; no runtime or release pass implied",
+  "compiler_files_sha256": {
+    "bin/m68k-amigaos-gcc": "b20d61e9dcd2defe093c0f562e96611e6f5ae3cb0588cf1063463fd913f189f6",
+    "bin/m68k-amigaos-g++": "7b9ec5f9efd56ec7ed79fd788f4b316e63b5337267aa145e2aee364bb6163089",
+    "bin/m68k-amigaos-as": "c93fe82ebda280d861ca65ab68fec2d64e63c89fd327a069bcf1c5928e295c46",
+    "bin/m68k-amigaos-ld": "c55353a0e0c7c9d55574c5cbd6c633c11b4357fb078d9615582ea313b0fcdf88",
+    "libexec/gcc/m68k-amigaos/16.2.0b/cc1": "d638cf066b6751a106e779a56f20c4b3ebfa62df30a2889f4767540477334399",
+    "libexec/gcc/m68k-amigaos/16.2.0b/cc1obj": "8dce717d9519b0592c5a9ed440da2aefed6e8de624b74e6c157e43c5215092e4",
+    "libexec/gcc/m68k-amigaos/16.2.0b/cc1plus": "8c3a0d1edbfb1514aae2fc35af2ac25b141924cb0637cfa5cbdbcda2878dd3a5"
+  }
+}

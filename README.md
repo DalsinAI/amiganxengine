@@ -78,14 +78,28 @@ result as `nx-data.tar`, a plain ustar archive, with `untar`, a small Amiga
 unpacker (`runtime-data/untar.c`, from amigapowermanga): that is how a lab
 gets the data. It is staged there only, never committed or packaged.
 
+## Running
+
+`nxengine-evo` with no options opens a 320x240 screen of its own, the
+game's own frame, unscaled (SDL's real full screen; it needs SDL2.module
+from gfopenrtg main at `210df77` or later). Options, Graphics changes the
+resolution and full screen (upstream's menu); the setting is saved. The
+program reads `data/` beside itself (`PROGDIR:data`) and writes only in
+`PROGDIR:User` (made on first start): `settings.dat`, the saves
+(`profile.dat`), `debug.log` and F9's screenshots (`screenshotNNN.png`).
+`-fps` logs each second's rate of frames shown (`fps 49.9 at 14.057 s`)
+and a summary at exit. The game runs its logic and draws at its own fixed
+50 frames a second.
+
 ## Status
 
-**COMPILED**, not RELEASE (see Observed below and the release gates in
+**FIRST LIGHT**, not RELEASE (see Observed below and the release gates in
 amicradle `docs/porting/MEASUREMENT.md`).
 
 | Gate | State |
 |---|---|
 | Pinned source, reproducible build, receipts | done (open5, Cradle) |
+| Title and first room, the whole 320x240 frame on a screen of its own | done (49.7 frames a second, the game's rate is 50) |
 
 ## Observed
 
@@ -114,6 +128,55 @@ also built, in 9 minutes 8 seconds, to a 23,753,916-byte program
 (`1d279411...6d2e`); with two compiles at a time (commit `b84479f`, job
 `j20261103T014028-36e125`) it ran past stove_build's 900 s, which is what
 the catalogue's "deferred by host load" was.
+
+### Presentation, 3 November 2026
+
+Commit `f77fa71` adds `patches/0002-amiga-presentation.patch`: on AmigaOS
+the game's own 320x240 frame on a screen of its own by default (upstream's
+default is a 640x480 window), the settings, saves and log in
+`PROGDIR:User` instead of `ENVARC:nxengine`, `-fps`, and F9's screenshot
+on a big-endian machine (upstream asks SDL for 24 bits with 32-bit masks
+there, which SDL refused: "Unknown pixel format"). Executable (open5,
+Cradle job `j20261103T022206-4559fe`): SHA-256
+`eef9c8b853276e218ac196c711a2cc744ff649bd14ad0f22fd13b4730016f214`
+(3,617,972 bytes; `receipts/2-presentation-open5-stove_build.json`).
+
+Run in `lab:nxengine`, a copy of Instance-32 (AC090 JIT, 68040 + FPU, RTG
+1920x1080, AHI, muted), with SDL2.module built by Cradle from gfopenrtg main
+at `77fb11f` (job `j20261103T015054-a27024`, SHA-256 `e923d22a...bb4d`,
+1,002,284 bytes) in both `LIBS:OpenGPU/` and `LIBS:GFOpenGPU/` (the copy had
+no `LIBS:GFOpenGPU/`; Instance-32's `SDL2_mixer.module` and
+`SDL2_image.module` were copied there beside it); the game in
+`Work:Games/NXEngine` with its data unpacked by `untar`; no `PROGDIR:User`
+before the start; sound on.
+
+- `nxengine-evo -fps`: the RTG head switched to 320x240 and the title
+  filled it (log: `window 320x240, full screen, display mode 320x240`,
+  `using: opengpu renderer`). The data, the 26 Organya songs and the sound
+  effects loaded in about 7 seconds. Upstream's own warnings are there:
+  37 of the `pxt` sound numbers upstream tries have no file in the
+  freeware data (`fx08.pxt` to `fx63.pxt`), as on 24 October, and the Ogg music folders the
+  options can choose are absent (`Music dir Ogg/ doesn't exist`); the
+  original Organya music is what plays.
+- New Game: the opening (the Shelter cut-scene, the dialogue) and the
+  Start Point, Quote standing in the first cave with the status bar; F9
+  wrote `PROGDIR:User/screenshot001.png`.
+- **Frames shown: 49.7 a second on average** over 290 one-second readings
+  (title, opening and Start Point), 44.5 at the lowest (four readings
+  under 47: three at stage loads, one in the title's first seconds), 51.8
+  at the highest. The game runs its
+  logic and draws at a fixed 50 a second (`GAME_FPS`), so it keeps its own
+  pace.
+- Escape, Quit: a clean exit (`Script engine shutdown`, `Sound system
+  shutdown`, `Renderer::Close()`), the Workbench came back.
+
+![The title on its own 320x240 screen](docs/observed/step2-title-320x240.png)
+![The Start Point, the first cave](docs/observed/step2-start-point-320x240.png)
+
+The pictures are the screen as `Grab` read it (`tests/lab`: the front
+screen through cybergraphics.library, written as PNG with a palette when
+it has 256 colours or fewer); `tests/lab` also has HoldKeys, JoyPort and
+Chop, as amigakobodeluxe has them.
 
 ### Earlier runs, 24 October 2026
 
