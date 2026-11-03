@@ -12,7 +12,9 @@
 #   OUT        the output directory (default build-amiga)
 #   NX_SOURCE  a local upstream checkout holding the pinned commit; without
 #              it the pinned commit (gameports/catalog.json) is fetched
-#   JOBS       parallel compiles (default 2)
+#   JOBS       parallel compiles (default: the host's processors, at most
+#              8; every source carries the bundled spdlog and fmt headers,
+#              so two at a time would not finish inside stove_build's 900 s)
 # patches/ is applied to a copy of upstream (git archive of the pinned
 # commit), with no fuzz, then patch_amigaos3_deps.py; the sources are
 # upstream's own CMake lists (the same globs), compiled with the stove's
@@ -29,7 +31,10 @@ if [ -z "${STOVE:-}" ]; then
     [ -d "$STOVE" ] || STOVE="$HOME/AmigaChrome/stoves/os32-gcc16"
 fi
 OUT=${OUT:-"$HERE/build-amiga"}
-JOBS=${JOBS:-2}
+if [ -z "${JOBS:-}" ]; then
+    JOBS=$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 2)
+    [ "$JOBS" -le 8 ] || JOBS=8
+fi
 OPEN3=9fcc136ab59e3bb5b91d2764d0bf290b709d72d7380be4ce0cdf005edf8eff21
 OPEN4=495319a2ffd803278f8827cad70074029c7aa9ecbe05d037e8646ba43ab94ab2
 P="$STOVE/prefix"
