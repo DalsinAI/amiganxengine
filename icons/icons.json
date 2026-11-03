@@ -1,0 +1,10 @@
+{
+  "about": "The Workbench icons of the NXEngine drawer: python3 AMICRADLE/scripts/port_icons.py icons/icons.json --out icons (DalsinAI/amicradle). The art is NXEngine-evo's own program icon (upstream platform/xdg/org.nxengine.nxengine_evo.png at the pinned commit, GPL-3.0 with the engine).",
+  "drawer": {"name": "NXEngine"},
+  "badge": "art/nxengine.png",
+  "icons": [
+    {"file": "nxengine-evo.info", "kind": "tool", "stack": 262144},
+    {"file": "ReadMe.info", "kind": "readme"},
+    {"file": "LICENSE.info", "kind": "readme"}
+  ]
+}

@@ -100,6 +100,39 @@ RAM:input.txt` logs every key, joystick and pad event the game takes.
 and a summary at exit. The game runs its logic and draws at its own fixed
 50 frames a second.
 
+## Package and icons
+
+Target `package` (`package/build-amiga.sh`) builds the game as `.` does and
+packs the release archive with `tools/make_package.py` (from
+amigaopentyrian): `nxengine-evo-VERSION-68040.lha` (LhA level-1, `-lh5-`,
+written by `tools/lha_archive.py`) holding the `NXEngine` drawer and
+`NXEngine.info` beside it, with the `.sha256`, an Aminet `.readme`,
+`package.json`, the drawer as it unpacks and `NXEngine.tar` (for a lab:
+`untar` unpacks it on the Amiga). `package/package.json` lists what goes in
+the drawer: the program, `ReadMe` (from `package/ReadMe.in`), `LICENSE`
+(the engine's GPL-3.0) and `data/ReadMe.txt`, which says where the Cave
+Story data comes from. The data itself is not packed
+(`gameports/runtime-data.json`'s policy: the freeware game may be passed on
+as it is, but this is a laid-out mirror of it, so it is fetched and staged,
+never republished from here).
+
+The drawer, the game and the documents have OS 3.5 GlowIcons (`icons/*.info`):
+the classic four-colour picture for older Workbenches and two colour frames,
+drawn from NXEngine-evo's own program icon (`icons/art/nxengine.png`, from
+upstream's `platform/xdg/org.nxengine.nxengine_evo.png` at the pinned
+commit). The game's icon asks for a 256 KB stack. They are committed, so the
+package needs nothing else; to draw them again (they come out byte for byte),
+with a DalsinAI/amicradle checkout:
+
+```sh
+python3 ../amicradle/scripts/port_icons.py icons/icons.json --out icons
+```
+
+`patches/0005-amiga-workbench.patch` (AmigaOS only): started from its icon
+(libnix gives `argc` 0), the game logs to `User/debug.log` alone, with SDL's
+own lines in it, so no console window opens beside the game; from a Shell it
+logs to both, as before.
+
 ## Status
 
 **FIRST LIGHT**, not RELEASE (see Observed below and the release gates in
