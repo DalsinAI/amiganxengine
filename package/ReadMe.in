@@ -20,8 +20,20 @@ Requirements
 Installing
 ----------
 
-Unpack the archive where you keep games (lha x nxengine-evo-...lha
-Games:). Then the data, prepared on a PC with Python 3, git and tar, from
+OS 3.2 has no lha command: unpack the archive with OpenCompress (on
+AmiCradle, SYS:Utilities/OpenCompress), for example into RAM:
+
+  OpenCompress x nxengine-evo-@VERSION@-68040.lha RAM:
+
+Then open RAM: and double-click Install-NXEngine. The Amiga Installer
+checks for a 68040 or 68060 with its FPU, asks for the drawer to put
+NXEngine in (Work:Games is offered), makes sure LIBS:GFOpenGPU has
+SDL2.module, SDL2_mixer.module and SDL2_image.module (copying them from
+LIBS:OpenGPU when only that has them), and copies the game. Run it again
+to update: the drawer User, with your settings and saves, is left as it
+is.
+
+Then the data, prepared on a PC with Python 3, git and tar, from
 the port's repository:
 
     git clone https://github.com/DalsinAI/amiganxengine
