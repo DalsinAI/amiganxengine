@@ -19,5 +19,9 @@
     ["Version", "{version}"],
     ["Requires", "AmigaOS 3.2, 68040/68060 with FPU, GFOpenGPU SDL2, AHI, Cave Story data"],
     ["Architecture", "m68k-amigaos >= 3.2"]
+  ],
+  "root": [
+    {"name": "Install-NXEngine", "repo": "package/installer/Install-NXEngine", "installer": true},
+    {"name": "Install-NXEngine.info", "repo": "package/installer/Install-NXEngine.info"}
   ]
 }

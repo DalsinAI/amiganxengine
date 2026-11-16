@@ -1,0 +1,19 @@
+{
+  "name": "NXEngine-evo",
+  "version": "2.6.5-1f093d1-amigaos3-test1",
+  "drawer": "NXEngine",
+  "program": "nxengine-evo",
+  "cpu": "68040",
+  "fpu": true,
+  "space": 6000000,
+  "modules": [
+    "SDL2.module",
+    "SDL2_mixer.module",
+    "SDL2_image.module"
+  ],
+  "keep": [
+    "User"
+  ],
+  "parent": "Work:Games",
+  "badge": "../icons/art/nxengine.png"
+}
