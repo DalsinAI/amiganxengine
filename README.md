@@ -176,7 +176,7 @@ amicradle `docs/porting/MEASUREMENT.md`).
 
 | Gate | State |
 |---|---|
-| Pinned source, reproducible build, receipts | done (open5, Cradle) |
+| Pinned source, reproducible build, receipts | done (open5 in Cradle; current main also builds with open8) |
 | Title and first room, the whole 320x240 frame on a screen of its own | done (49.7 frames a second, the game's rate is 50) |
 | Keyboard play | done (menus, the opening, walking, jumping, the water) |
 | Joystick / CD32 pad | not tested: no stick in the lab (SDL opens port 2 as a game controller) |
@@ -201,8 +201,11 @@ the `os32-gcc16` stove (GFOpenAmigaGCC 16.2.0-open5, job
 | Compiler | Executable SHA-256 | Bytes |
 |---|---|---|
 | 16.2.0-open5 (Cradle `stove_build`, job `j20261103T020914-854fa3`) | `dbd926a92a94f57d1508241de88b24e7596cf60be3c187acaf3e0e7498244a4a` | 3,613,692 |
+| 16.2.0-open8 (Team 1 clean source build of current main, 18 November 2026) | `27dafa74b0253faae209d04dfcdb58010230d6e4b272efddc420b3d2555a5ffa` | 3,644,504 |
 
-The receipt is `receipts/1-build-open5-stove_build.json`. The game data
+The receipts are `receipts/1-build-open5-stove_build.json` and
+`receipts/7-build-open8-team1.json`. The open8 result is compile/link proof
+only: no game data or runtime pass was part of that build. The game data
 staged for the lab (job `j20261103T021128-d3f6dc`, `receipts/1-data.json`):
 the pinned zip (SHA-256 checked) and the engine's data, 661 files with 26
 music aliases, the import receipt `10c0ae7e...60e4` (the same as on
